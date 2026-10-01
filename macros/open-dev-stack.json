@@ -1,0 +1,16 @@
+{
+  "id": "open-dev-stack",
+  "name": "Open dev stack",
+  "enabled": true,
+  "trigger": {
+    "type": "hotkey",
+    "parameters": { "mods": "cmd,ctrl,alt", "key": "d" }
+  },
+  "actions": [
+    { "type": "activate", "parameters": { "app": "Safari" } },
+    { "type": "delay", "parameters": { "seconds": 0.6 } },
+    { "type": "openURL", "parameters": { "url": "https://github.com/pulls" } },
+    { "type": "openURL", "parameters": { "url": "https://linear.app/inbox" } },
+    { "type": "notify", "parameters": { "title": "Macroforge", "text": "Morning pages ready" } }
+  ]
+}

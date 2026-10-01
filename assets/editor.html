@@ -1,0 +1,1729 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Macroforge</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --wallpaper: radial-gradient(130% 100% at 12% 0%, #dbe7f6 0%, #e9edf3 42%, #f5f5f7 100%);
+    --panel: rgba(247, 247, 249, 0.72);
+    --sidebar: rgba(236, 236, 240, 0.62);
+    --card: #ffffff;
+    --control: #ffffff;
+    --fill: rgba(120, 120, 128, 0.08);
+    --fill-strong: rgba(120, 120, 128, 0.16);
+    --hairline: rgba(0, 0, 0, 0.07);
+    --separator: rgba(0, 0, 0, 0.09);
+    --border: rgba(0, 0, 0, 0.12);
+    --border-strong: rgba(0, 0, 0, 0.18);
+    --text: #1d1d1f;
+    --muted: #86868b;
+    --accent: #007aff;
+    --accent-hi: #3395ff;
+    --accent-lo: #0062cc;
+    --accent-soft: rgba(0, 122, 255, 0.12);
+    --danger: #ff3b30;
+    --danger-soft: rgba(255, 59, 48, 0.1);
+    --ok: #248a3d;
+    --switch: #34c759;
+    --warn: #ff9500;
+    --shadow-key: 0 0.5px 1.5px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+    --shadow-pop: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 12px 40px rgba(0, 0, 0, 0.22);
+    --ring: 0 0 0 3.5px var(--accent-soft);
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1e;
+      --wallpaper: radial-gradient(130% 100% at 12% 0%, #22303f 0%, #26262a 45%, #1e1e1e 100%);
+      --panel: rgba(44, 44, 46, 0.72);
+      --sidebar: rgba(36, 36, 40, 0.62);
+      --card: #2c2c2e;
+      --control: #1f1f21;
+      --fill: rgba(120, 120, 128, 0.24);
+      --fill-strong: rgba(120, 120, 128, 0.36);
+      --hairline: rgba(255, 255, 255, 0.08);
+      --separator: rgba(255, 255, 255, 0.1);
+      --border: rgba(255, 255, 255, 0.14);
+      --border-strong: rgba(255, 255, 255, 0.22);
+      --text: #f5f5f7;
+      --muted: #98989d;
+      --accent: #0a84ff;
+      --accent-hi: #409cff;
+      --accent-lo: #0060df;
+      --accent-soft: rgba(10, 132, 255, 0.24);
+      --danger: #ff453a;
+      --danger-soft: rgba(255, 69, 58, 0.16);
+      --ok: #30d158;
+      --switch: #30d158;
+      --shadow-key: 0 0.5px 1.5px rgba(0, 0, 0, 0.36), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+      --shadow-pop: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  [hidden] { display: none !important; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
+      "PingFang SC", sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text);
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection { background: var(--accent-soft); }
+
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.22);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.38); background-clip: content-box; }
+  @media (prefers-color-scheme: dark) {
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.28); background-clip: content-box; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.45); background-clip: content-box; }
+  }
+
+  button, input, select, textarea { font: inherit; }
+
+  /* ---- macOS window chrome: traffic lights + toolbar ---- */
+
+  .toolbar {
+    flex: 0 0 auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 52px;
+    padding: 0 16px;
+    background: var(--panel);
+    -webkit-backdrop-filter: saturate(180%) blur(22px);
+    backdrop-filter: saturate(180%) blur(22px);
+    border-bottom: 1px solid var(--separator);
+  }
+
+  .traffic-lights { display: flex; align-items: center; gap: 8px; margin-right: 2px; }
+
+  .tl {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14);
+  }
+
+  .tl.close { background: linear-gradient(180deg, #ff6961, #ff5f57); }
+  .tl.min { background: linear-gradient(180deg, #ffc75c, #febc2e); }
+  .tl.zoom { background: linear-gradient(180deg, #54d958, #28c840); }
+
+  .traffic-lights:hover .tl::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 8px 8px;
+  }
+
+  .traffic-lights:hover .tl.close::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.6 2.6l4.8 4.8M7.4 2.6l-4.8 4.8' stroke='rgba(0%2C0%2C0%2C0.55)' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+
+  .traffic-lights:hover .tl.min::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.2 5h5.6' stroke='rgba(0%2C0%2C0%2C0.55)' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+
+  .traffic-lights:hover .tl.zoom::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.6 4.2L4.2 1.6zM5 1.6h3.4V5zM1.6 6.8v3.4H5z' fill='rgba(0%2C0%2C0%2C0.55)'/%3E%3C/svg%3E");
+  }
+
+  .window-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    pointer-events: none;
+    max-width: 40%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 650;
+    font-size: 13px;
+    letter-spacing: -0.01em;
+  }
+
+  .brand-mark {
+    width: 22px;
+    height: 22px;
+    border-radius: 6.5px;
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13 2L4.5 13.5H11L9.8 22L19.5 10H13L13 2z' fill='%23fff'/%3E%3C/svg%3E") center / 13px 13px no-repeat,
+      linear-gradient(180deg, #6fd7fb 0%, #0a84ff 52%, #5e5ce6 100%);
+    box-shadow:
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.34),
+      inset 0 1px 1px rgba(255, 255, 255, 0.4),
+      0 1px 2px rgba(0, 0, 0, 0.14);
+  }
+
+  .toolbar .spacer { flex: 1 1 auto; }
+
+
+  /* ---- Push buttons (AppKit style) ---- */
+
+  button {
+    cursor: default;
+    color: var(--text);
+    background: var(--control);
+    border: 0.5px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 3.5px 11px;
+    min-height: 24px;
+    box-shadow: var(--shadow-key);
+    transition: background 0.12s ease, color 0.12s ease, filter 0.12s ease,
+      box-shadow 0.12s ease, opacity 0.12s ease;
+  }
+
+  button:hover { filter: brightness(0.98); }
+  button:active { filter: brightness(0.94); }
+  button:focus-visible { outline: none; box-shadow: var(--ring), var(--shadow-key); }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  button.primary {
+    background: var(--accent);
+    border-color: transparent;
+    color: #fff;
+    font-weight: 590;
+    box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.16);
+  }
+
+  button.primary:hover { background: var(--accent-hi); }
+  button.primary:active { background: var(--accent-lo); }
+  button.primary:focus-visible { box-shadow: var(--ring); }
+
+  button.ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--accent);
+    box-shadow: none;
+    font-weight: 500;
+  }
+
+  button.ghost:hover { background: var(--accent-soft); filter: none; }
+  button.ghost:active { background: var(--accent-soft); filter: brightness(0.95); }
+
+  button.danger { color: var(--danger); }
+  button.danger.ghost:hover { background: var(--danger-soft); }
+
+  /* ---- Segmented control (NSSegmentedControl) ---- */
+
+  .segmented {
+    display: inline-flex;
+    padding: 2px;
+    gap: 2px;
+    background: var(--fill-strong);
+    border-radius: 7px;
+  }
+
+  .segmented button {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    padding: 2.5px 12px;
+    border-radius: 5.5px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .segmented button:hover { background: rgba(0, 0, 0, 0.05); filter: none; }
+  @media (prefers-color-scheme: dark) { .segmented button:hover { background: rgba(255, 255, 255, 0.07); } }
+
+  .segmented button[aria-pressed="true"] {
+    background: var(--control);
+    box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+    font-weight: 600;
+  }
+
+  /* ---- Layout, source list sidebar ---- */
+
+  .layout { flex: 1 1 auto; display: flex; min-height: 0; background: var(--wallpaper) fixed; }
+
+  .sidebar {
+    flex: 0 0 260px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--sidebar);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    backdrop-filter: saturate(180%) blur(24px);
+    border-right: 1px solid var(--separator);
+  }
+
+  .sidebar-head {
+    padding: 12px 14px 8px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .sidebar-head h2 {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .sidebar-head .count { margin-left: auto; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+  .sidebar-tools { padding: 0 12px 8px; display: flex; gap: 8px; }
+
+  .sidebar-tools input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 26px;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--control) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2386868b' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M20 20l-4.4-4.4'/%3E%3C/svg%3E") no-repeat 8px center / 12px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 3px 9px 3px 27px;
+    box-shadow: inset 0 1px 1.5px rgba(0, 0, 0, 0.04);
+  }
+
+  .macro-list { list-style: none; margin: 0; padding: 0 8px 8px; overflow-y: auto; flex: 1 1 auto; }
+
+  .macro-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: default;
+    user-select: none;
+  }
+
+  .macro-item:hover { background: var(--fill-strong); }
+
+  .macro-item.active { background: var(--accent); }
+  .macro-item.active:hover { background: var(--accent); }
+  .macro-item.active .mi-name { color: #fff; }
+  .macro-item.active .mi-sub { color: rgba(255, 255, 255, 0.78); }
+
+  /* App-icon tile per trigger type, SF Symbols outline inside */
+  .mi-icon {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    border-radius: 5.5px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    box-shadow:
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.26),
+      inset 0 1px 1px rgba(255, 255, 255, 0.28),
+      0 0.5px 1px rgba(0, 0, 0, 0.1);
+  }
+
+  .mi-icon svg { width: 12px; height: 12px; display: block; }
+  .mi-icon.hotkey { background: linear-gradient(180deg, #8e8bff, #5856d6); }
+  .mi-icon.typed { background: linear-gradient(180deg, #38a5ff, #007aff); }
+  .mi-icon.appLaunch { background: linear-gradient(180deg, #43c65d, #248a3d); }
+  .mi-icon.windowFocused { background: linear-gradient(180deg, #ffb340, #ff9500); }
+  .mi-icon.interval { background: linear-gradient(180deg, #ff5b7f, #ff2d55); }
+  .mi-icon.manual { background: linear-gradient(180deg, #a8a8ad, #8a8a8e); }
+  .mi-icon.off { filter: grayscale(1) brightness(1.12); opacity: 0.6; }
+
+  .mi-text { flex: 1 1 auto; min-width: 0; }
+
+  .mi-name {
+    font-weight: 550;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mi-sub {
+    color: var(--muted);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+
+  .macro-item .run {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    min-height: 0;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    border-radius: 999px;
+    font-size: 9px;
+    box-shadow: none;
+    opacity: 0;
+    transition: opacity 0.12s ease, background 0.12s ease;
+  }
+
+  .macro-item:hover .run { opacity: 0.85; }
+  .macro-item.active .run { color: #fff; opacity: 0.9; }
+  .macro-item .run:hover { background: rgba(0, 0, 0, 0.08); filter: none; opacity: 1; }
+  .macro-item.active .run:hover { background: rgba(255, 255, 255, 0.22); }
+
+  .sidebar-foot { padding: 10px 12px; border-top: 1px solid var(--separator); }
+  .sidebar-foot button { width: 100%; }
+
+
+  /* ---- Editor surface ---- */
+
+  .editor {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-y: auto;
+    padding: 22px 26px 34px;
+  }
+
+  .editor-inner { max-width: 760px; margin: 0 auto; }
+
+  .empty {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--muted);
+    text-align: center;
+    padding: 40px;
+  }
+
+  .empty-glyph {
+    width: 76px;
+    height: 76px;
+    border-radius: 19px;
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13 2L4.5 13.5H11L9.8 22L19.5 10H13L13 2z' fill='%23fff'/%3E%3C/svg%3E") center / 40px 40px no-repeat,
+      linear-gradient(165deg, #7fdcfb 0%, #0a84ff 48%, #5e5ce6 100%);
+    box-shadow:
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.3),
+      inset 0 2px 3px rgba(255, 255, 255, 0.35),
+      0 10px 28px rgba(10, 132, 255, 0.28);
+    margin-bottom: 4px;
+  }
+
+  .empty h2 { color: var(--text); margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .empty p { margin: 0; max-width: 44em; line-height: 1.6; }
+  .empty code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--fill-strong);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+  .empty .hint { font-size: 12px; opacity: 0.85; }
+
+  /* ---- Inset-grouped cards (System Settings style) ---- */
+
+  .card {
+    background: var(--card);
+    border-radius: 10px;
+    box-shadow: 0 0 0 0.5px var(--hairline), 0 1px 3px rgba(0, 0, 0, 0.03);
+    padding: 2px 14px;
+    margin-bottom: 20px;
+  }
+
+  .card > h3 {
+    margin: 0;
+    padding: 10px 2px 6px;
+    font-size: 11px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .card .card-note {
+    margin: 0 2px 10px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+  .grid.one { grid-template-columns: minmax(0, 1fr); }
+
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 9px 2px; }
+
+  .card .grid > .field { border-bottom: 1px solid var(--hairline); }
+  .card .grid > .field:last-child { border-bottom: none; }
+  .card .grid > .field:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+
+  .field > span, .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+  }
+
+  .field .hint { font-size: 11px; color: var(--muted); line-height: 1.45; }
+
+  /* ---- Text fields ---- */
+
+  input[type="text"], input[type="number"], textarea, select {
+    font: inherit;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--control);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 4.5px 9px;
+    width: 100%;
+    min-width: 0;
+    box-shadow: inset 0 1px 1.5px rgba(0, 0, 0, 0.04);
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+
+  input[type="text"]:focus, input[type="number"]:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: var(--ring);
+  }
+
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2386868b' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 11px 11px;
+    padding-right: 28px;
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 62px;
+    line-height: 1.5;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  /* ---- Apple switch (checkbox in .check) ---- */
+
+  .check { flex-direction: row; align-items: center; gap: 9px; }
+
+  .check input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 38px;
+    height: 24px;
+    margin: 0;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background-color: var(--fill-strong);
+    background-image: radial-gradient(circle, #ffffff 0 10px, transparent 10.5px);
+    background-size: 22px 22px;
+    background-repeat: no-repeat;
+    background-position: 1px center;
+    box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+    cursor: default;
+    transition: background-color 0.18s ease, background-position 0.18s ease;
+  }
+
+  .check input[type="checkbox"]:checked {
+    background-color: var(--switch);
+    background-position: right 1px center;
+  }
+
+  .check input[type="checkbox"]:focus-visible {
+    outline: none;
+    box-shadow: var(--ring), inset 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+  }
+
+  /* ---- Modifier keycaps ---- */
+
+  .mods { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .mods label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2.5px 9px;
+    border-radius: 5.5px;
+    background: var(--control);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05), inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+    cursor: default;
+    user-select: none;
+    font-size: 12px;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+
+  .mods label:hover { background: var(--fill); }
+
+  .mods label:has(input:checked) {
+    background: var(--accent);
+    border-color: transparent;
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  }
+
+  .mods input { appearance: none; -webkit-appearance: none; width: 0; height: 0; margin: 0; }
+
+  /* ---- Action rows ---- */
+
+  .action {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: var(--fill);
+  }
+
+  .action:last-of-type { margin-bottom: 0; }
+
+  .action-head { display: flex; align-items: center; gap: 8px; }
+
+  .action-head .grip { color: var(--muted); cursor: grab; letter-spacing: -1px; font-size: 14px; }
+
+  .action-head select { flex: 1 1 auto; font-weight: 550; background: var(--control); }
+
+  .action-tools { display: flex; gap: 2px; }
+
+  .action-tools button {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    padding: 3px 7px;
+    border-radius: 5.5px;
+    font-size: 12px;
+    box-shadow: none;
+  }
+
+  .action-tools button:hover { background: var(--fill-strong); color: var(--text); filter: none; }
+  .action-tools button.remove:hover { color: var(--danger); background: var(--danger-soft); }
+
+  .action-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin-top: 10px; }
+  .action-body .span { grid-column: 1 / -1; }
+  .action-body .field { padding: 4px 0; }
+
+  .action-desc { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+  .row { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; }
+
+  /* ---- Error banner ---- */
+
+  .banner {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 149, 0, 0.12);
+    box-shadow: inset 0 0 0 0.5px rgba(255, 149, 0, 0.35);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .banner pre {
+    margin: 6px 0 0;
+    font-size: 11px;
+    white-space: pre-wrap;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+  .banner .close { margin-left: auto; }
+
+  /* ---- Status bar + toast ---- */
+
+  .statusbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 26px;
+    padding: 0 16px;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--panel);
+    -webkit-backdrop-filter: saturate(180%) blur(22px);
+    backdrop-filter: saturate(180%) blur(22px);
+    border-top: 1px solid var(--separator);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .statusbar .spacer { flex: 1 1 auto; }
+  .statusbar .bad { color: var(--danger); font-weight: 600; }
+
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 46px;
+    transform: translate(-50%, 14px);
+    background: rgba(30, 30, 32, 0.78);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    box-shadow: var(--shadow-pop), inset 0 0 0 0.5px rgba(255, 255, 255, 0.14);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    max-width: 70vw;
+    text-align: center;
+  }
+
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #toast.error { background: rgba(132, 32, 26, 0.82); }
+
+  .json-view {
+    width: 100%;
+    min-height: 58vh;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.55;
+    tab-size: 2;
+    padding: 12px 14px;
+    caret-color: var(--accent);
+  }
+
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (max-width: 860px) { .window-title { display: none; } }
+
+  @media (max-width: 720px) {
+    .layout { flex-direction: column; }
+    .sidebar { flex: 0 0 auto; max-height: 42vh; border-right: none; border-bottom: 1px solid var(--separator); }
+    .grid, .action-body { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+
+</head>
+<body>
+
+<header class="toolbar">
+  <div class="traffic-lights" aria-hidden="true"><span class="tl close"></span><span class="tl min"></span><span class="tl zoom"></span></div>
+  <div class="window-title" id="window-title">Macroforge</div>
+  <div class="brand"><span class="brand-mark"></span>Macroforge</div>
+  <div class="segmented" role="group" aria-label="编辑模式">
+    <button type="button" id="mode-form" aria-pressed="true">表单</button>
+    <button type="button" id="mode-json" aria-pressed="false">JSON</button>
+  </div>
+  <div class="spacer"></div>
+  <button type="button" id="btn-reload" class="ghost">重新载入</button>
+  <button type="button" id="btn-run" class="ghost">运行</button>
+  <button type="button" id="btn-delete" class="danger ghost">删除</button>
+  <button type="button" id="btn-save" class="primary">存储</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <h2>宏</h2>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="sidebar-tools">
+      <input type="text" id="filter" placeholder="搜索…" aria-label="搜索宏">
+    </div>
+    <ul class="macro-list" id="macro-list"></ul>
+    <div class="sidebar-foot">
+      <button type="button" id="btn-new">新建宏</button>
+    </div>
+  </aside>
+
+  <main class="editor" id="editor">
+    <div class="empty" id="empty-state">
+      <div class="empty-glyph"></div>
+      <h2>Macroforge 编辑器</h2>
+      <p>从左侧选择一个宏来编辑，或新建一个。每个宏就是一个 JSON 文件，存放在
+        <code>~/.hammerspoon/macroforge/macros/</code>。</p>
+      <p>触发热键、键入字符串、应用启动、窗口聚焦和定时器都可以驱动动作序列：
+        打开应用、操作窗口、输入文字、运行脚本、调用其他宏。</p>
+      <p class="hint" id="empty-hint"></p>
+    </div>
+
+    <div id="form-wrap" hidden>
+      <div class="editor-inner">
+        <div id="banners"></div>
+
+        <section class="card">
+          <h3>基本信息</h3>
+          <div class="grid">
+            <label class="field"><span>名称</span>
+              <input type="text" id="f-name" placeholder="例如：插入邮件签名"></label>
+            <label class="field"><span>ID</span>
+              <input type="text" id="f-id" placeholder="email-signature">
+              <span class="hint" id="id-hint"></span></label>
+          </div>
+          <div class="row" style="margin-top: 14px">
+            <label class="field check"><input type="checkbox" id="f-enabled"><span>启用</span></label>
+            <label class="field check"><input type="checkbox" id="f-continue"><span>出错时继续执行</span></label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>触发方式</h3>
+          <div class="grid one">
+            <label class="field"><span>触发器类型</span>
+              <select id="f-trigger-type"></select></label>
+          </div>
+          <div class="grid" id="trigger-params" style="margin-top: 12px"></div>
+        </section>
+
+        <section class="card">
+          <h3>动作</h3>
+          <div id="actions"></div>
+          <button type="button" id="btn-add-action" class="ghost">+ 添加动作</button>
+        </section>
+      </div>
+    </div>
+
+    <div id="json-wrap" hidden>
+      <textarea id="json-view" class="json-view" spellcheck="false" aria-label="宏 JSON"></textarea>
+    </div>
+  </main>
+</div>
+
+<footer class="statusbar">
+  <span id="status-count"></span>
+  <span id="status-errors"></span>
+  <span class="spacer"></span>
+  <span id="status-dirty"></span>
+  <span id="status-time"></span>
+</footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  var BASE = '/macroforge';
+  var state = {
+    catalog: { actions: [], triggers: [] },
+    macros: [],
+    errors: [],
+    current: null,
+    selectedId: null,
+    dirty: false,
+    mode: 'form',
+    filter: ''
+  };
+
+  function $(id) { return document.getElementById(id); }
+
+  function pretty(value) { return JSON.stringify(value, null, 2); }
+
+  function esc(text) {
+    return String(text === undefined || text === null ? '' : text)
+  }
+
+  function api(path, options) {
+    options = options || {};
+    var init = { method: options.method || 'GET', headers: {} };
+    if (options.body !== undefined) {
+      init.headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(options.body);
+    }
+    return fetch(BASE + path, init).then(function (res) {
+      return res.text().then(function (raw) {
+        var data = null;
+        try { data = raw ? JSON.parse(raw) : {}; }
+        catch (e) { data = { error: 'unreadable response: ' + esc(raw).slice(0, 200) }; }
+        if (!res.ok) {
+          var failure = new Error((data && data.error) || ('HTTP ' + res.status));
+          failure.data = data;
+          throw failure;
+        }
+        return data;
+      });
+    });
+  }
+
+  var toastTimer = null;
+
+  function toast(message, kind) {
+    var el = $('toast');
+    el.textContent = message;
+    el.className = kind === 'error' ? 'show error' : 'show';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.className = ''; }, 2800);
+  }
+
+  function byId(id) {
+    for (var i = 0; i < state.macros.length; i++) {
+      if (state.macros[i].id === id) return state.macros[i];
+    }
+    return null;
+  }
+
+  function defFor(list, type) {
+    var key = esc(type).toLowerCase();
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i].type).toLowerCase() === key) return list[i];
+    }
+    return null;
+  }
+
+  function actionLabel(type) {
+    var def = defFor(state.catalog.actions, type);
+    return def ? def.label : type;
+  }
+
+  function triggerLabel(trigger) {
+    var def = defFor(state.catalog.triggers, trigger.type);
+    var label = def ? def.label : trigger.type;
+    var p = trigger.parameters || {};
+    if (trigger.type === 'typed' && p.string) label += ' · ' + p.string;
+    else if (trigger.type === 'hotkey' && p.key) label += ' · ' + (p.mods ? p.mods + '+' : '') + p.key;
+    else if ((trigger.type === 'appLaunch' || trigger.type === 'windowFocused') && p.app) label += ' · ' + p.app;
+    else if (trigger.type === 'interval' && p.minutes) label += ' · ' + p.minutes + ' 分钟';
+    return label;
+  }
+
+  var TRIGGER_ICONS = {
+    hotkey: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>',
+    typed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>',
+    appLaunch: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9.5h18"/><circle cx="6.3" cy="6.8" r="0.4" fill="currentColor"/></svg>',
+    windowFocused: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg>',
+    interval: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4"/><circle cx="12" cy="14" r="8"/><path d="M12 10.5V14l2.5 2"/></svg>',
+    manual: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5-11-6.5z"/></svg>'
+  };
+
+  function triggerIconSVG(type) {
+    return TRIGGER_ICONS[type] || TRIGGER_ICONS.manual;
+  }
+
+  function actionSummary(macro) {
+    var steps = (macro.actions || []).map(function (a) { return actionLabel(a.type); });
+    if (!steps.length) return '没有动作';
+    var text = steps[0];
+    if (steps.length > 1) text += ' 等 ' + steps.length + ' 步';
+    return text;
+  }
+
+  function renderStatus() {
+    $('window-title').textContent = state.current ? (state.current.name || state.current.id) : 'Macroforge';
+    $('status-count').textContent = state.macros.length + ' 个宏';
+    var problems = $('status-errors');
+    if (state.errors.length) {
+      problems.textContent = state.errors.length + ' 个文件有问题';
+      problems.className = 'bad';
+    } else {
+      problems.textContent = '';
+      problems.className = '';
+    }
+    $('status-dirty').textContent = state.dirty ? '有未存储的修改' : '';
+  }
+
+  function renderBanners() {
+    var host = $('banners');
+    host.textContent = '';
+    if (!state.errors.length) return;
+    var box = document.createElement('div');
+    box.className = 'banner';
+    var body = document.createElement('div');
+    var title = document.createElement('strong');
+    title.textContent = state.errors.length + ' 个宏文件无法载入：';
+    body.appendChild(title);
+    var pre = document.createElement('pre');
+    pre.textContent = state.errors.map(function (e) {
+      return esc(e.file) + ' -- ' + esc(e.error);
+    }).join('\n');
+    body.appendChild(pre);
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'close ghost';
+    close.textContent = '忽略';
+    close.addEventListener('click', function () { host.textContent = ''; });
+    box.appendChild(body);
+    box.appendChild(close);
+    host.appendChild(box);
+  }
+
+  function renderList() {
+    renderBanners();
+    var list = $('macro-list');
+    list.textContent = '';
+    var query = state.filter.trim().toLowerCase();
+    var shown = 0;
+    state.macros.slice().sort(function (a, b) {
+      return esc(a.name).localeCompare(esc(b.name));
+    }).forEach(function (macro) {
+      var haystack = (esc(macro.name) + ' ' + esc(macro.id)).toLowerCase();
+      if (query && haystack.indexOf(query) === -1) return;
+      shown++;
+      var item = document.createElement('li');
+      item.className = 'macro-item' + (macro.id === state.selectedId ? ' active' : '');
+      item.dataset.id = macro.id;
+      var icon = document.createElement('span');
+      icon.className = 'mi-icon ' + ((macro.trigger && macro.trigger.type) || 'manual') + (macro.enabled === false ? ' off' : '');
+      icon.title = macro.enabled === false ? '已停用' : '已启用';
+      icon.innerHTML = triggerIconSVG(macro.trigger && macro.trigger.type);
+      var wrap = document.createElement('div');
+      wrap.className = 'mi-text';
+      var name = document.createElement('div');
+      name.className = 'mi-name';
+      name.textContent = macro.name || macro.id;
+      var sub = document.createElement('div');
+      sub.className = 'mi-sub';
+      sub.textContent = (macro.trigger && macro.trigger.type)
+        ? triggerLabel(macro.trigger)
+        : '手动 · ' + actionSummary(macro);
+      wrap.appendChild(name);
+      wrap.appendChild(sub);
+      var run = document.createElement('button');
+      run.type = 'button';
+      run.className = 'run';
+      run.textContent = '\u25b6';
+      run.title = '立即运行';
+      run.dataset.act = 'run';
+      item.appendChild(icon);
+      item.appendChild(wrap);
+      item.appendChild(run);
+      list.appendChild(item);
+    });
+    $('count').textContent = shown + ' / ' + state.macros.length;
+    if (!shown) {
+      var blank = document.createElement('li');
+      blank.className = 'mi-sub';
+      blank.style.padding = '8px 9px';
+      blank.textContent = state.macros.length ? '没有匹配的宏' : '还没有宏';
+      list.appendChild(blank);
+    }
+    renderStatus();
+  }
+
+  function selectMacro(id) {
+    var macro = byId(id);
+    if (!macro) return;
+    if (state.dirty && !confirm('放弃未存储的修改？')) return;
+    state.selectedId = id;
+    state.current = macro;
+    state.dirty = false;
+    syncMode(state.mode);
+    renderList();
+  }
+
+  function syncMode(mode) {
+    state.mode = mode;
+    $('mode-form').setAttribute('aria-pressed', mode === 'form' ? 'true' : 'false');
+    $('mode-json').setAttribute('aria-pressed', mode === 'json' ? 'true' : 'false');
+    var hasMacro = !!state.current;
+    $('form-wrap').hidden = !(hasMacro && mode === 'form');
+    $('json-wrap').hidden = !(hasMacro && mode === 'json');
+    $('empty-state').hidden = hasMacro;
+    if (hasMacro && mode === 'form') renderForm();
+    if (hasMacro && mode === 'json') $('json-view').value = pretty(state.current);
+    renderStatus();
+  }
+
+  function makeField(labelText, control, hintText) {
+    var field = document.createElement('label');
+    field.className = 'field';
+    var label = document.createElement('span');
+    label.textContent = labelText;
+    field.appendChild(label);
+    field.appendChild(control);
+    if (hintText) {
+      var hint = document.createElement('span');
+      hint.className = 'hint';
+      hint.textContent = hintText;
+      field.appendChild(hint);
+    }
+    return field;
+  }
+
+  function readValue(control) {
+    if (control.type === 'checkbox') return control.checked;
+    if (control.dataset.number !== undefined) {
+      var n = parseFloat(control.value);
+      return isNaN(n) ? control.value : n;
+    }
+    return control.value;
+  }
+
+  function paramControl(def, value, wide) {
+    var control;
+    var kind = String(def.type || 'string').toLowerCase();
+    if (kind === 'boolean') {
+      control = document.createElement('input');
+      control.type = 'checkbox';
+      control.checked = value === undefined ? (def.default === true) : (value === true);
+      return { node: control, wrap: 'check', label: def.label || def.name };
+    }
+    if (kind === 'choice') {
+      control = document.createElement('select');
+      (def.choices || []).forEach(function (choice) {
+        var option = document.createElement('option');
+        option.value = choice;
+        option.textContent = choice;
+        control.appendChild(option);
+      });
+      control.value = value === undefined ? esc(def.default) : esc(value);
+      if (!control.value && def.default !== undefined) control.value = esc(def.default);
+      return { node: control, wrap: '', label: def.label || def.name };
+    }
+    if (kind === 'number') {
+    if (String(def.name).toLowerCase() === 'mods') {
+      return modsGroup(value, def);
+    }
+     control = document.createElement('input');
+     control.type = 'number';
+      control.step = 'any';
+      control.dataset.number = '1';
+      control.value = value === undefined ? esc(def.default) : esc(value);
+      return { node: control, wrap: '', label: def.label || def.name };
+    }
+    control = document.createElement(kind === 'text' ? 'textarea' : 'input');
+    if (kind !== 'text') control.type = 'text';
+    control.value = value === undefined ? esc(def.default) : esc(value);
+    if (def.placeholder) control.placeholder = def.placeholder;
+    if (String(def.name).toLowerCase() === 'macro') control.setAttribute('list', 'macro-id-list');
+    return { node: control, wrap: kind === 'text' ? 'span' : (wide ? '' : ''), label: def.label || def.name };
+  }
+
+  function renderParams(host, defs, params, scope, index) {
+    host.textContent = '';
+(defs || []).forEach(function (def) {
+      var built = paramControl(def, params ? params[def.name] : undefined);
+      built.node.dataset.param = def.name;
+      built.node.dataset.scope = scope;
+      if (index !== undefined) built.node.dataset.index = String(index);
+      if (def.required) built.node.required = true;
+      var field;
+      if (built.wrap === 'check') {
+        field = document.createElement('label');
+        field.className = 'field check';
+        field.appendChild(built.node);
+        var text = document.createElement('span');
+        text.textContent = built.label;
+        field.appendChild(text);
+      } else if (built.wrap === 'span') {
+        field = makeField(built.label, built.node, def.description);
+        field.className = 'field span';
+      } else {
+        field = makeField(built.label, built.node, def.description);
+      }
+      host.appendChild(field);
+    });
+  }
+
+  var MOD_KEYS = ['cmd', 'ctrl', 'alt', 'shift', 'fn'];
+
+  function modsGroup(value, def) {
+    var holder = document.createElement('div');
+    holder.className = 'mods';
+    holder.dataset.mods = '1';
+    var picked = {};
+    esc(value === undefined ? def.default : value).split(',').forEach(function (item) {
+      var key = item.trim().toLowerCase();
+      if (key) picked[key] = true;
+    });
+    MOD_KEYS.forEach(function (key) {
+      var label = document.createElement('label');
+      var box = document.createElement('input');
+      box.type = 'checkbox';
+      box.dataset.mod = key;
+      box.checked = picked[key] === true;
+      var text = document.createElement('span');
+      text.textContent = MACRO_NAME(key);
+      label.appendChild(box);
+      label.appendChild(text);
+      holder.appendChild(label);
+    });
+    return { node: holder, wrap: 'mods', label: def.label || def.name };
+  }
+
+  function MACRO_NAME(key) {
+    if (key === 'cmd') return '\u2318 Cmd';
+    if (key === 'ctrl') return '\u2303 Ctrl';
+    if (key === 'alt') return '\u2325 Option';
+    if (key === 'shift') return '\u21e7 Shift';
+    return 'Fn';
+  }
+
+  function collectValue(node) {
+    if (node.dataset && node.dataset.mods !== undefined) {
+      var picked = [];
+      var boxes = node.querySelectorAll('input[type=checkbox]');
+      for (var i = 0; i < boxes.length; i++) {
+        if (boxes[i].checked) picked.push(boxes[i].dataset.mod);
+      }
+      return picked.join(',');
+    }
+    return readValue(node);
+  }
+
+  function renderTrigger() {
+    var select = $('f-trigger-type');
+    select.textContent = '';
+    var manual = document.createElement('option');
+    manual.value = '';
+    manual.textContent = '手动（只从菜单或编辑器运行）';
+    select.appendChild(manual);
+    state.catalog.triggers.forEach(function (def) {
+      var option = document.createElement('option');
+      option.value = def.type;
+      option.textContent = def.label + ' -- ' + def.description;
+      select.appendChild(option);
+    });
+    var trigger = state.current.trigger;
+    select.value = (trigger && trigger.type) ? trigger.type : '';
+    renderParams($('trigger-params'), triggerDef(select.value),
+      trigger ? trigger.parameters : null, 'trigger');
+  }
+
+  function triggerDef(type) {
+    if (!type) return [];
+    var def = defFor(state.catalog.triggers, type);
+    return def ? def.params : [];
+  }
+
+  function actionDefs() { return state.catalog.actions; }
+
+  function renderActions() {
+    var host = $('actions');
+    host.textContent = '';
+    var steps = state.current.actions || [];
+    if (!steps.length) {
+      var blank = document.createElement('p');
+      blank.className = 'action-desc';
+      blank.textContent = '还没有动作，点下面的按钮添加第一步。';
+      host.appendChild(blank);
+    }
+    steps.forEach(function (step, index) {
+      var def = defFor(actionDefs(), step.type);
+      var card = document.createElement('div');
+      card.className = 'action';
+      card.dataset.index = String(index);
+      var head = document.createElement('div');
+      head.className = 'action-head';
+      var grip = document.createElement('span');
+      grip.className = 'grip';
+      grip.textContent = '\u2261';
+      var select = document.createElement('select');
+      actionDefs().forEach(function (optionDef) {
+        var option = document.createElement('option');
+        option.value = optionDef.type;
+        option.textContent = optionDef.label;
+        select.appendChild(option);
+      });
+      select.value = step.type;
+      select.dataset.scope = 'action-type';
+      select.dataset.index = String(index);
+      var tools = document.createElement('div');
+      tools.className = 'action-tools';
+      ['up', 'down', 'copy', 'del'].forEach(function (act) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.act = act;
+        button.title = { up: '上移', down: '下移', copy: '复制', del: '删除' }[act];
+        button.textContent = { up: '\u2191', down: '\u2193', copy: '\u2398', del: '\u2715' }[act];
+        if (act === 'del') button.className = 'remove';
+        if (act === 'up' && index === 0) button.disabled = true;
+        if (act === 'down' && index === steps.length - 1) button.disabled = true;
+        tools.appendChild(button);
+      });
+      head.appendChild(grip);
+      head.appendChild(select);
+      head.appendChild(tools);
+      card.appendChild(head);
+      var body = document.createElement('div');
+      body.className = 'action-body';
+      renderParams(body, def ? def.params : [], step.parameters || {}, 'action', index);
+      card.appendChild(body);
+      if (def && def.description) {
+        var note = document.createElement('p');
+        note.className = 'action-desc';
+        note.textContent = def.description;
+        card.appendChild(note);
+      }
+      host.appendChild(card);
+    });
+  }
+
+  var idAuto = true;
+
+  function slugify(text) {
+    var slug = esc(text).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return slug || 'macro';
+  }
+
+  function updateIdHint() {
+    var hint = $('id-hint');
+    var id = $('f-id').value.trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id)) {
+      hint.textContent = 'ID 只能包含字母、数字、-、_、.，且不能以 . 开头';
+      return;
+    }
+    var clash = byId(id);
+    if (clash && clash !== state.current) {
+      hint.textContent = '该 ID 已被 "' + clash.name + '" 占用';
+      return;
+    }
+    hint.textContent = '写入 macros/' + id + '.json';
+  }
+
+  function renderForm() {
+    var macro = state.current;
+    if (!macro) return;
+    $('f-name').value = esc(macro.name);
+    $('f-id').value = esc(macro.id);
+    $('f-enabled').checked = macro.enabled !== false;
+    $('f-continue').checked = macro.continueOnError === true;
+    updateIdHint();
+    renderTrigger();
+    renderActions();
+    renderStatus();
+  }
+
+  function defaultsFor(defs) {
+    var params = {};
+    (defs || []).forEach(function (def) {
+      if (def.default !== undefined) params[def.name] = def.default;
+    });
+    return params;
+  }
+
+  function collectParams(scope, index) {
+    var params = {};
+    var nodes = document.querySelectorAll('[data-scope][data-param]');
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.dataset.scope !== scope) continue;
+      if (index === undefined) {
+        if (node.dataset.index !== undefined) continue;
+      } else if (node.dataset.index !== String(index)) {
+        continue;
+      }
+      params[node.dataset.param] = collectValue(node);
+    }
+    return params;
+  }
+
+  function collectActions() {
+    var steps = [];
+    var cards = $('actions').querySelectorAll('.action');
+    for (var i = 0; i < cards.length; i++) {
+      var select = cards[i].querySelector('select[data-scope="action-type"]');
+      var type = select ? select.value : '';
+      steps.push({ type: type, parameters: collectParams('action', i) });
+    }
+    return steps;
+  }
+
+  function collect() {
+    var macro = state.current;
+    macro.name = $('f-name').value.trim();
+    macro.id = $('f-id').value.trim();
+    macro.enabled = $('f-enabled').checked;
+    macro.continueOnError = $('f-continue').checked;
+    var triggerType = $('f-trigger-type').value;
+    if (triggerType) {
+      macro.trigger = { type: triggerType, parameters: collectParams('trigger') };
+    } else {
+      delete macro.trigger;
+    }
+    macro.actions = collectActions();
+    return macro;
+  }
+
+  function missingRequired(defs, params) {
+    var missing = [];
+    (defs || []).forEach(function (def) {
+      if (!def.required) return;
+      var value = params[def.name];
+      if (value === undefined || value === null || value === '') missing.push(def.label || def.name);
+    });
+    return missing;
+  }
+
+  function validate(macro) {
+    var problems = [];
+    if (!macro.name) problems.push('名称不能为空。');
+    else if (macro.name.length > 80) problems.push('名称不能超过 80 个字符。');
+    if (!macro.id) problems.push('ID 不能为空。');
+    else if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(macro.id)) {
+      problems.push('ID 只能包含字母、数字、-、_、.，且不能以 . 开头。');
+    } else {
+      var clash = byId(macro.id);
+      if (clash && clash !== state.current) problems.push('ID 与 "' + clash.name + '" 重复。');
+    }
+    if (!macro.actions || !macro.actions.length) problems.push('至少需要一个动作。');
+    if (macro.trigger && macro.trigger.type) {
+      var def = defFor(state.catalog.triggers, macro.trigger.type);
+      var gap = missingRequired(def ? def.params : [], macro.trigger.parameters || {});
+      if (gap.length) problems.push('触发器缺少必填项：' + gap.join('、'));
+    }
+    (macro.actions || []).forEach(function (step, i) {
+      var def = defFor(actionDefs(), step.type);
+      if (!def) {
+        problems.push('第 ' + (i + 1) + ' 步：未知动作类型 ' + step.type);
+        return;
+      }
+      var gap = missingRequired(def.params, step.parameters || {});
+      if (gap.length) problems.push('第 ' + (i + 1) + ' 步（' + def.label + '）缺少：' + gap.join('、'));
+    });
+    return problems;
+  }
+
+  function markDirty() {
+    state.dirty = true;
+    renderStatus();
+  }
+
+  function onTypeChange(scope, index, newType) {
+    collect();
+    if (scope === 'trigger') {
+      if (newType) {
+        state.current.trigger = { type: newType, parameters: defaultsFor(triggerDef(newType)) };
+      } else {
+        delete state.current.trigger;
+      }
+      renderTrigger();
+    } else {
+      var steps = state.current.actions || [];
+      var step = steps[index];
+      if (step) {
+        var def = defFor(actionDefs(), newType);
+        step.type = newType;
+        step.parameters = defaultsFor(def ? def.params : []);
+      }
+      renderActions();
+    }
+    markDirty();
+  }
+
+  function moveAction(index, delta) {
+    collect();
+    var steps = state.current.actions || [];
+    var target = index + delta;
+    if (target < 0 || target >= steps.length) return;
+    var swap = steps[target];
+    steps[target] = steps[index];
+    steps[index] = swap;
+    renderActions();
+    markDirty();
+  }
+
+  function copyAction(index) {
+    collect();
+    var steps = state.current.actions || [];
+    var clone = JSON.parse(pretty(steps[index]));
+    steps.splice(index + 1, 0, clone);
+    renderActions();
+    markDirty();
+  }
+
+  function deleteAction(index) {
+    collect();
+    (state.current.actions || []).splice(index, 1);
+    renderActions();
+    markDirty();
+  }
+
+  function addAction() {
+    collect();
+    var def = actionDefs()[0];
+    (state.current.actions = state.current.actions || []).push({
+      type: def ? def.type : 'notify',
+      parameters: defaultsFor(def ? def.params : [])
+    });
+    renderActions();
+    markDirty();
+  }
+
+  function save() {
+    var macro = collect();
+    var problems = validate(macro);
+    if (problems.length) {
+      toast(problems[0], 'error');
+      return Promise.resolve(false);
+    }
+    return api('/api/macros', { method: 'POST', body: { macro: macro } }).then(function (data) {
+      state.dirty = false;
+      return loadAll().then(function () {
+        state.selectedId = data.macro ? data.macro.id : macro.id;
+        if (state.mode === 'json') $('json-view').value = pretty(data.macro || macro);
+        syncMode(state.mode);
+        toast('已存储 ' + (data.macro ? data.macro.name : macro.name));
+        return true;
+      });
+    }).catch(function (err) {
+      toast('存储失败：' + err.message, 'error');
+      return false;
+    });
+  }
+
+  function runMacro(id) {
+    return api('/api/run', { method: 'POST', body: { id: id } }).then(function (data) {
+      if (data && data.started) toast('已运行');
+      else toast('未运行：' + ((data && data.reason) || '未知原因'), 'error');
+    }).catch(function (err) {
+      toast('运行失败：' + err.message, 'error');
+    });
+  }
+
+  function removeMacro() {
+    if (!state.current) return;
+    var macro = state.current;
+    if (!confirm('删除宏 "' + macro.name + '"？')) return;
+    api('/api/macros/' + encodeURIComponent(macro.id), { method: 'DELETE' }).then(function () {
+      state.dirty = false;
+      state.current = null;
+      state.selectedId = null;
+      return loadAll().then(function () {
+        syncMode(state.mode);
+        toast('已删除 ' + macro.name);
+      });
+    }).catch(function (err) {
+      toast('删除失败：' + err.message, 'error');
+    });
+  }
+
+  function reloadAll() {
+    return api('/api/reload', { method: 'POST', body: {} }).then(function () {
+      return loadAll().then(function () {
+        $('status-time').textContent = '重新载入于 ' + new Date().toLocaleTimeString();
+        toast('已重新载入');
+      });
+    }).catch(function (err) {
+      toast('重新载入失败：' + err.message, 'error');
+    });
+  }
+
+  function ensureDatalist() {
+    var host = $('macro-id-list');
+    if (!host) {
+      host = document.createElement('datalist');
+      host.id = 'macro-id-list';
+      document.body.appendChild(host);
+    }
+    host.textContent = '';
+    state.macros.forEach(function (macro) {
+      var option = document.createElement('option');
+      option.value = macro.id;
+      option.label = macro.name || macro.id;
+      host.appendChild(option);
+    });
+  }
+
+  function newMacro() {
+    if (state.dirty && !confirm('放弃未存储的修改？')) return;
+    var used = {};
+    state.macros.forEach(function (macro) { used[macro.id] = true; });
+    var serial = 1;
+    while (used['macro-' + serial]) serial++;
+    state.current = {
+      id: 'macro-' + serial,
+      name: '宏 ' + serial,
+      enabled: true,
+      actions: [{
+        type: 'notify',
+        parameters: { title: 'Macroforge', text: 'Hello from Macroforge' }
+      }]
+    };
+    state.selectedId = null;
+    idAuto = true;
+    state.dirty = false;
+    state.mode = 'form';
+    syncMode('form');
+    renderList();
+  }
+
+  function loadAll() {
+    return Promise.all([api('/api/catalog'), api('/api/macros')]).then(function (results) {
+      state.catalog = results[0] || { actions: [], triggers: [] };
+      var payload = results[1] || {};
+      state.macros = payload.macros || [];
+      state.errors = payload.errors || [];
+      if (state.current) {
+        var fresh = byId(state.current.id);
+        if (fresh && !state.dirty) state.current = fresh;
+      }
+      ensureDatalist();
+      renderList();
+      if (state.current) {
+        if (state.mode === 'form') renderForm();
+        else $('json-view').value = pretty(state.current);
+      }
+      syncMode(state.mode);
+    });
+  }
+
+  function setMode(mode) {
+    if (mode === state.mode) return;
+    if (mode === 'json') {
+      $('json-view').value = pretty(collect());
+    } else {
+      var parsed;
+      try {
+        parsed = JSON.parse($('json-view').value);
+      } catch (err) {
+        toast('JSON 解析失败：' + err.message, 'error');
+        return;
+      }
+      if (!parsed || typeof parsed !== 'object') {
+        toast('JSON 必须是一个对象', 'error');
+        return;
+      }
+      state.current = parsed;
+      if (!state.current.id) state.current.id = 'macro';
+      if (!state.current.name) state.current.name = state.current.id;
+      if (!Array.isArray(state.current.actions)) state.current.actions = [];
+      state.dirty = true;
+    }
+    state.mode = mode;
+    syncMode(mode);
+  }
+
+  function wire() {
+    $('macro-list').addEventListener('click', function (event) {
+      var trigger = event.target.closest('button[data-act="run"]');
+      if (trigger) {
+        var row = trigger.closest('.macro-item');
+        if (row) runMacro(row.dataset.id);
+        event.stopPropagation();
+        return;
+      }
+      var item = event.target.closest('.macro-item');
+      if (item && item.dataset.id) {
+        idAuto = true;
+        selectMacro(item.dataset.id);
+      }
+    });
+
+    $('actions').addEventListener('click', function (event) {
+      var button = event.target.closest('button[data-act]');
+      if (!button) return;
+      var card = button.closest('.action');
+      if (!card) return;
+      var index = Number(card.dataset.index);
+      var act = button.dataset.act;
+      if (act === 'up') moveAction(index, -1);
+      else if (act === 'down') moveAction(index, 1);
+      else if (act === 'copy') copyAction(index);
+      else if (act === 'del') deleteAction(index);
+    });
+
+    document.addEventListener('change', function (event) {
+      var target = event.target;
+      if (target.id === 'f-trigger-type') {
+        onTypeChange('trigger', undefined, target.value);
+      } else if (target.dataset && target.dataset.scope === 'action-type') {
+        onTypeChange('action', Number(target.dataset.index), target.value);
+      }
+    });
+
+    document.addEventListener('input', function (event) {
+      var target = event.target;
+      if (target.id === 'json-view') {
+        markDirty();
+        return;
+      }
+      if (!state.current) return;
+      if (target.id === 'f-id') {
+        idAuto = false;
+        updateIdHint();
+      } else if (target.id === 'f-name' && idAuto) {
+        if (target.value.trim()) $('f-id').value = slugify(target.value);
+        updateIdHint();
+      }
+      markDirty();
+    });
+
+    $('btn-save').addEventListener('click', function () { save(); });
+    $('btn-delete').addEventListener('click', removeMacro);
+    $('btn-new').addEventListener('click', newMacro);
+    $('btn-add-action').addEventListener('click', addAction);
+    $('btn-reload').addEventListener('click', reloadAll);
+    $('btn-run').addEventListener('click', function () {
+      if (!state.current) return;
+      if (state.dirty) save().then(function (ok) { if (ok) runMacro(state.current.id); });
+      else runMacro(state.current.id);
+    });
+    $('mode-form').addEventListener('click', function () { setMode('form'); });
+    $('mode-json').addEventListener('click', function () { setMode('json'); });
+    $('filter').addEventListener('input', function () {
+      state.filter = this.value;
+      renderList();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        save();
+      }
+    });
+
+    window.addEventListener('beforeunload', function (event) {
+      if (!state.dirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    });
+  }
+
+  function boot() {
+    wire();
+    renderStatus();
+    loadAll().then(function () {
+      var sorted = state.macros.slice().sort(function (a, b) {
+        return esc(a.name).localeCompare(esc(b.name));
+      });
+      if (sorted.length) {
+        state.current = sorted[0];
+        state.selectedId = sorted[0].id;
+      }
+      $('empty-hint').textContent = state.macros.length
+        ? '双击左侧宏名编辑；触发热键需在系统设置里允许 Hammerspoon 的辅助功能权限。'
+        : '还没有宏。点左下角「新建宏」，或用 JSON 模式直接写文件。';
+      syncMode('form');
+      renderList();
+    }).catch(function (err) {
+      $('empty-hint').textContent = '无法连接 Macroforge 运行时：' + err.message;
+      toast('无法连接 Macroforge 运行时：' + err.message, 'error');
+    });
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "id": "typed-timestamp",
+  "name": "Type timestamp at cursor",
+  "enabled": true,
+  "trigger": {
+    "type": "typed",
+    "parameters": { "string": ";now", "delete": true }
+  },
+  "actions": [
+    { "type": "runShell", "parameters": { "command": "date '+%Y-%m-%d %H:%M' | tr -d '\\n' | pbcopy" } },
+    { "type": "delay", "parameters": { "seconds": 0.2 } },
+    { "type": "pressKeys", "parameters": { "mods": "cmd", "key": "v" } },
+    { "type": "notify", "parameters": { "title": "Macroforge", "text": "Timestamp pasted" } }
+  ]
+}

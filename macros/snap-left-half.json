@@ -1,0 +1,12 @@
+{
+  "id": "snap-left-half",
+  "name": "Snap window left half",
+  "enabled": true,
+  "trigger": {
+    "type": "hotkey",
+    "parameters": { "mods": "cmd,ctrl,alt", "key": "left" }
+  },
+  "actions": [
+    { "type": "snapWindow", "parameters": { "position": "left" } }
+  ]
+}

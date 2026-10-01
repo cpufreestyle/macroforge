@@ -1,0 +1,12 @@
+{
+  "id": "hourly-stretch",
+  "name": "Hourly stretch reminder",
+  "enabled": false,
+  "trigger": {
+    "type": "interval",
+    "parameters": { "minutes": 60 }
+  },
+  "actions": [
+    { "type": "notify", "parameters": { "title": "Stretch break", "text": "Stand up and look away for 20 seconds" } }
+  ]
+}

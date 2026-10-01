@@ -1,0 +1,18 @@
+{
+  "id": "email-signature",
+  "name": "Paste email signature",
+  "enabled": true,
+  "trigger": {
+    "type": "hotkey",
+    "parameters": { "mods": "cmd,ctrl,alt", "key": "s" }
+  },
+  "actions": [
+    {
+      "type": "pasteText",
+      "parameters": {
+        "text": "Best regards,\nAlex",
+        "restore": true
+      }
+    }
+  ]
+}

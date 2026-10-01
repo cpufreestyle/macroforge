@@ -1,0 +1,12 @@
+{
+  "id": "zoom-launch-greeting",
+  "name": "Zoom launch reminder",
+  "enabled": true,
+  "trigger": {
+    "type": "appLaunch",
+    "parameters": { "app": "zoom.us" }
+  },
+  "actions": [
+    { "type": "notify", "parameters": { "title": "Joining Zoom", "text": "Remember: join muted, video off" } }
+  ]
+}
