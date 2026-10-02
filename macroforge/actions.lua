@@ -150,13 +150,24 @@ defs.playmacro = {
       done()
       return
     end
-    playMacro(params.macro, {
-      onComplete = done,
-      onError = function(reason)
-        env.notify("Macroforge", tostring(reason))
-        done()
-      end,
+    -- The nested run reports failure either through onError or by returning
+    -- (false, reason) without firing a callback. Both must finish this action
+    -- or the parent macro never unwinds and its re-entry guard leaks, which is
+    -- what permanently deadlocked a macro whose nested reference was bad.
+    local settled = false
+    local function settle(reason)
+      if settled then return end
+      settled = true
+      if reason then env.notify("Macroforge", tostring(reason)) end
+      done()
+    end
+    local started, reason = playMacro(params.macro, {
+      onComplete = function() settle(nil) end,
+      onError = function(err) settle(err) end,
     })
+    if started == false and not settled then
+      settle(reason or "nested macro did not start")
+    end
   end,
 }
 

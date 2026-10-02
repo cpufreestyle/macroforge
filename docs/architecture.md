@@ -44,7 +44,7 @@ trigger fires → engine.playMacro(macro)
    │    ├─ resolve def from the catalog
    │    ├─ action.run(env, params, done, playMacro)
    │    └─ done() resumes the chain; errors honour continueOnError
-   └─ finishes → next queued macro (if any) starts
+   └─ finishes → releases the re-entry guard; concurrent triggers run in parallel (no queue)
 ```
 
 ## The `env` bridge

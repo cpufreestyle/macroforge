@@ -123,3 +123,21 @@ test("router: OPTIONS and 404 fallbacks", function()
   eq(204, router:route("OPTIONS", "/macroforge/api/macros", ""))
   eq(404, router:route("GET", "/macroforge/unknown", ""))
 end)
+
+-- The editor is same-origin with its API, so no response needs CORS. A
+-- wildcard Access-Control-Allow-Origin let any website POST /api/run (a
+-- simple request, no preflight) and execute runShell macros, or read and
+-- rewrite macro files. Pin the absence of the header on the run endpoint.
+test("router: responses never send a wildcard CORS origin", function()
+  local files = {
+    ["m.json"] = json.encode({
+      id = "m", name = "m", enabled = true,
+      actions = { { type = "runShell", parameters = { command = "true" } } },
+    }),
+  }
+  local router = makeRouter(files)
+  local _, _, runHeaders = router:route("POST", "/macroforge/api/run", json.encode({ id = "m" }))
+  eq(nil, runHeaders["Access-Control-Allow-Origin"])
+  local _, _, listHeaders = router:route("GET", "/macroforge/api/macros", "")
+  eq(nil, listHeaders["Access-Control-Allow-Origin"])
+end)

@@ -12,11 +12,12 @@ local catalog = require("macroforge.catalog")
 local BASE = "/macroforge"
 
 local function send(status, body, contentType)
+  -- No Access-Control-Allow-Origin: the editor is same-origin with the API it
+  -- calls, so it never needs CORS. A wildcard here let any website POST
+  -- /api/run (a simple request, no preflight) and execute runShell macros, or
+  -- read/rewrite/delete every macro file, from the user's own browser.
   return status, body, {
     ["Content-Type"] = contentType or "application/json",
-    ["Access-Control-Allow-Origin"] = "*",
-    ["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS",
-    ["Access-Control-Allow-Headers"] = "Content-Type",
   }
 end
 

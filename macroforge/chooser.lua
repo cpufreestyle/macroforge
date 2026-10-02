@@ -98,18 +98,27 @@ function chooser:refresh()
 end
 
 -- Generic one-shot chooser used for the "manage macros" panel.
+--
+-- A single instance is reused across invocations. Creating a fresh hs.chooser
+-- every time and never calling :delete() leaked one native chooser per open.
+local simpleImpl = nil
 function chooser.simple(hs, rows, onChoose)
   rows = rows or {}
   if #rows == 0 then
     rows[1] = { text = "(no macros yet)", kind = "empty" }
   end
-  local impl = hs.chooser.new(function(choice)
-    if choice and type(onChoose) == "function" then onChoose(choice) end
-  end)
-  impl:choices(rows)
-  impl:rows(math.min(12, #rows))
-  impl:show()
-  return impl
+  if not simpleImpl then
+    simpleImpl = hs.chooser.new(function(choice)
+      if choice and type(chooser._simpleOnChoose) == "function" then
+        chooser._simpleOnChoose(choice)
+      end
+    end)
+  end
+  chooser._simpleOnChoose = onChoose
+  simpleImpl:choices(rows)
+  simpleImpl:rows(math.min(12, #rows))
+  simpleImpl:show()
+  return simpleImpl
 end
 
 return chooser

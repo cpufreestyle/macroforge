@@ -71,7 +71,7 @@ unknown position falls back to the whole screen instead of failing.
 
 | type | parameters | effect |
 | --- | --- | --- |
-| `runShell` | `command` (required) | Run through `/bin/sh`, executed asynchronously. |
+| `runShell` | `command` (required) | Run through `/bin/sh`. `hs.execute` blocks the Hammerspoon main thread until the command exits, so keep commands short. |
 | `runAppleScript` | `script` (required) | Run an AppleScript snippet. |
 | `notify` | `title`, `text` (required) | Post a macOS notification. |
 | `delay` | `seconds` (required, number) | Pause the macro. Non-blocking: the macro resumes on a timer. |

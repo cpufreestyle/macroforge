@@ -13,6 +13,9 @@ function editor.start(opts)
   local router = assert(opts and opts.router, "editor.start requires opts.router")
 
   local server = hs.httpserver.new()
+  -- Serve only on loopback: the API runs shell commands and edits files, so it
+  -- must not be reachable from other machines on the network.
+  if server.setAddress then server:setAddress("127.0.0.1") end
   server:setCallback(function(method, path, headers, body)
     local status, respBody, respHeaders = router:route(method, path, body)
     return tostring(respBody or ""), status, respHeaders or {}

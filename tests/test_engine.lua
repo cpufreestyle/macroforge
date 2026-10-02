@@ -135,3 +135,38 @@ test("engine: nested playMacro actions chain", function()
   truthy(chained.started, "nested macro should run")
   eq({ "launchOrFocus", "notify" }, env:names())
 end)
+
+-- The shipped wiring resolves a nested string reference to the macro table
+-- before it reaches the engine. This test pins the actions<->engine contract
+-- the production path relies on, which the injected-callback test above
+-- bypasses: a bad nested reference must finish the parent (via done) instead
+-- of deadlocking it, and the parent must be free to run again afterwards.
+test("engine: a bad nested playMacro reference does not deadlock the parent", function()
+  local engine = engineMod.new({ notify = function() end })
+  local env = fake.new()
+  local outer = {
+    id = "outer", name = "outer", enabled = true,
+    actions = {
+      { type = "playMacro", parameters = { macro = "does-not-exist" } },
+      { type = "notify", parameters = { title = "t", text = "x" } },
+    },
+  }
+  local completed = false
+  -- Mimic the production playMacro callback: resolve fails, so it reports
+  -- (false, reason) WITHOUT firing onError -- the exact deadlock shape.
+  local started = engine:playMacro(outer, {
+    env = env,
+    playMacro = function(name, callbacks)
+      return false, "macro not found: " .. tostring(name)
+    end,
+    onComplete = function() completed = true end,
+  })
+  truthy(started, "parent should start")
+  truthy(completed, "parent must complete even when the nested ref is bad")
+  -- The re-entry guard must have been released: the parent runs again.
+  local second, reason = engine:playMacro(outer, {
+    env = env,
+    playMacro = function() return false, "macro not found" end,
+  })
+  truthy(second, "parent should be runnable again, got: " .. tostring(reason))
+end)

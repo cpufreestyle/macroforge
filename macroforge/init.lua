@@ -299,7 +299,20 @@ function Macroforge.start(opts)
     callbacks = callbacks or {}
     return engine:playMacro(macro, {
       env = env,
-      playMacro = play,
+      -- A nested playMacro action carries the target as a string (id or
+      -- name); resolve it to the macro table the engine requires. Resolving
+      -- here keeps every entry point -- chooser, console, and nesting -- on
+      -- the same code path.
+      playMacro = function(nameOrId, nested)
+        local target = Macroforge.resolve(nameOrId)
+        if not target then
+          if nested and nested.onError then
+            nested.onError("macro not found: " .. tostring(nameOrId))
+          end
+          return false, "macro not found: " .. tostring(nameOrId)
+        end
+        return play(target, nested)
+      end,
       onComplete = callbacks.onComplete,
       onError = callbacks.onError,
     })

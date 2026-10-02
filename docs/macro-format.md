@@ -24,10 +24,12 @@ name is ignored (the `id` field is the key), so pick a readable one.
 }
 ```
 
-Type names and parameter names are case-insensitive on load, choices are
-lower-cased, string numbers are coerced to numbers, and defaults are filled in
-— so hand-written JSON does not have to be exact, but invalid values are
-reported instead of silently ignored.
+Type names are case-insensitive on load and choices are lower-cased, but
+parameter names must match the catalog exactly (they are looked up by name, not
+case-folded). String numbers are coerced to numbers and defaults are filled in
+— note that an invalid value for a parameter that declares a default is
+silently replaced by that default, while a parameter without a default is
+reported by validation.
 
 ## Validation rules
 

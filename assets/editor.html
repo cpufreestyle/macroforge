@@ -1497,7 +1497,32 @@
   }
 
   function save() {
-    var macro = collect();
+    if (!state.current) {
+      toast('没有可存储的宏', 'error');
+      return Promise.resolve(false);
+    }
+    // In JSON mode the textarea is the source of truth: collect() only reads
+    // the form DOM, so saving from the raw-JSON edits would silently discard
+    // them and overwrite the disk with the stale form state.
+    var macro;
+    if (state.mode === 'json') {
+      try {
+        macro = JSON.parse($('json-view').value);
+      } catch (err) {
+        toast('JSON 解析失败：' + err.message, 'error');
+        return Promise.resolve(false);
+      }
+      if (!macro || typeof macro !== 'object' || Array.isArray(macro)) {
+        toast('JSON 必须是一个对象', 'error');
+        return Promise.resolve(false);
+      }
+      if (!macro.id) macro.id = 'macro';
+      if (!macro.name) macro.name = macro.id;
+      if (!Array.isArray(macro.actions)) macro.actions = [];
+      state.current = macro;
+    } else {
+      macro = collect();
+    }
     var problems = validate(macro);
     if (problems.length) {
       toast(problems[0], 'error');
@@ -1620,6 +1645,7 @@
 
   function setMode(mode) {
     if (mode === state.mode) return;
+    if (!state.current) return;
     if (mode === 'json') {
       $('json-view').value = pretty(collect());
     } else {
