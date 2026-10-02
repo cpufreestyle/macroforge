@@ -43,7 +43,10 @@ reported instead of silently ignored.
   (number/boolean/choice).
 
 Invalid macros are never registered, so a typo in one file cannot break the
-rest of the setup. During development watch the Hammerspoon console.
+rest of the setup: `store:load` reports the file and leaves the macro out of
+the chooser, the editor and every trigger binding. You see the problem as a
+banner in the editor and a notification on reload, not as a run-time failure.
+During development watch the Hammerspoon console.
 
 ## Referencing other macros
 

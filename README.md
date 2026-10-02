@@ -22,7 +22,7 @@ not an editor. Macroforge fills that gap:
 - a dependency-free **test suite** for all of the above.
 
 Everything you add is plain text in a git repo you own, and the whole thing is
-about 2 900 lines of Lua.
+about 2188 lines of Lua.
 
 ## Requirements
 

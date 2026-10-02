@@ -66,7 +66,12 @@ function router:route(method, path, body)
       return send(400, json.encode({ error = "invalid JSON body: " .. tostring(err) }))
     end
     local macro = (type(data) == "table" and data.macro) or data
-    local saved, saveErr = self.store:save(macro)
+    -- The editor knows the id it loaded, so a renamed macro arrives with the
+    -- new id and the id of the file it came from. Hand that previous id to the
+    -- store, or the old file stays on disk and the macro appears twice.
+    local previousId = (type(data) == "table" and type(data.previousId) == "string")
+      and data.previousId or nil
+    local saved, saveErr = self.store:saveRenaming(macro, previousId)
     if not saved then
       return send(400, json.encode({ error = saveErr }))
     end

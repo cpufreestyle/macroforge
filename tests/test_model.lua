@@ -1,4 +1,5 @@
 local model = require("macroforge.model")
+local json  = require("macroforge.json")
 
 test("model: normalize derives id and trims name", function()
   local macro = model.normalize({ name = "  Open   Stack  " })
@@ -87,3 +88,68 @@ test("model: summarize reads trigger and actions", function()
   })
   truthy(model.summarize(macro):find('type ";date"') ~= nil, "summary: " .. model.summarize(macro))
 end)
+
+-- A JSON null decodes into the NULL sentinel table. Everything that compares
+-- by identity used to break once the document was deep-copied, so nulls leaked
+-- into string parameters as a table address and passed validation.
+test("model: a null parameter is treated as absent, not stringified", function()
+  local macro = model.normalize({
+    name = "Nulls",
+    trigger = { type = "hotkey", parameters = { mods = "cmd", key = "k" } },
+    actions = {
+      { type = "typeText", parameters = { text = json.NULL } },
+      { type = "delay", parameters = { seconds = json.NULL } },
+      { type = "snapWindow", parameters = { position = json.NULL } },
+    },
+  })
+  local problems = model.validate(macro)
+  truthy(#problems >= 1, "a null for a required string must be reported, got: "
+    .. table.concat(problems, " | "))
+  truthy(table.concat(problems, "|"):find("json.null", 1, true) == nil,
+    "the sentinel must never be stringified into a message: " .. table.concat(problems, " | "))
+  eq(1, macro.actions[2].parameters.seconds)
+  eq("left", macro.actions[3].parameters.position)
+end)
+
+test("model: a null trigger means no trigger", function()
+  local macro = model.normalize({
+    name = "Null trigger",
+    trigger = json.NULL,
+    actions = { { type = "notify", parameters = { title = "t", text = "x" } } },
+  })
+  truthy(macro.trigger == nil, "a null trigger should normalise to no trigger")
+  eq(0, #model.validate(macro))
+end)
+
+test("model: a null name derives an id instead of stringifying the sentinel", function()
+  local macro = model.normalize({
+    name = json.NULL,
+    actions = { { type = "notify", parameters = { title = "t", text = "x" } } },
+  })
+  truthy(type(macro.name) == "string", "name must be a string, got " .. type(macro.name))
+  truthy(macro.name:find("json.null", 1, true) == nil,
+    "the sentinel leaked into the name: " .. tostring(macro.name))
+  truthy(macro.id:find("json.null", 1, true) == nil,
+    "the sentinel leaked into the id: " .. tostring(macro.id))
+end)
+
+test("model: null elements in the actions array are dropped", function()
+  local macro = model.normalize({
+    name = "Hole",
+    actions = {
+      json.NULL,
+      { type = "notify", parameters = { title = "t", text = "x" } },
+    },
+  })
+  eq(1, #macro.actions)
+  eq("notify", macro.actions[1].type)
+  eq(0, #model.validate(macro))
+end)
+
+test("util: deepCopy preserves the json.NULL sentinel identity", function()
+  local util = require("macroforge.util")
+  local copied = util.deepCopy({ trigger = json.NULL })
+  truthy(copied.trigger == json.NULL,
+    "deepCopy must not clone the NULL sentinel or identity comparisons break")
+end)
+

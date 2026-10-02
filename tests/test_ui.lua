@@ -157,3 +157,36 @@ test("ui: the running editor serves the restyled page", function()
   truthy(body:find("function triggerIconSVG(type)", 1, true),
     "the served page should carry the sidebar icons")
 end)
+
+-- The editor renders `mods` as a group of checkboxes and posts the picked
+-- modifiers back as a comma-separated string. A previous version only reached
+-- that picker from inside the `kind === "number"` branch, which a string-typed
+-- catalog parameter can never enter, so the checkboxes were unreachable.
+test("editor: the mods checkbox group stays reachable and honest", function()
+  local html = readEditor()
+  truthy(html:find("function isModsParam(def)", 1, true),
+    "paramControl should key the mods picker off a named helper")
+  truthy(html:find("if (isModsParam(def)) {", 1, true),
+    "the mods picker must run before the type switch, not from the number branch")
+  truthy(html:find("kind === 'number') {\n    control", 1, false) ~= nil,
+    "the number branch should build its input at a sane indentation")
+end)
+
+test("ui: the mods group survives the editor script in a stub DOM", function()
+  -- Covered end to end by tests/test_editor_runtime.lua via editor_smoke.mjs;
+  -- this pins the contract so a refactor of paramControl cannot silently
+  -- drop the checkbox UI again.
+  local catalog = require("macroforge.catalog")
+  local mods
+  for _, p in ipairs(catalog.triggerDef("hotkey").params) do
+    if p.name == "mods" then mods = p end
+  end
+  truthy(mods ~= nil, "the hotkey trigger still declares a mods parameter")
+  eq("string", mods.type)
+  local html = readEditor()
+  truthy(html:find("dataset.mods = '1'", 1, true),
+    "modsGroup must mark its holder so collectValue can find it")
+  truthy(html:find("node.dataset.mods !== undefined", 1, true),
+    "collectValue must read the mods holder instead of the input value")
+end)
+

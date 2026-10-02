@@ -90,16 +90,16 @@ function engine:playMacro(macro, callbacks)
   return true
 end
 
-function engine:isRunning(macroOrId)
-  local id = macroid(macroOrId)
-  return not not self._running[id]
-end
-
-function macroid(macroOrId)
+local function macroid(macroOrId)
   if type(macroOrId) == "table" then
     return macroOrId.id or macroOrId.name or tostring(macroOrId)
   end
   return tostring(macroOrId)
+end
+
+function engine:isRunning(macroOrId)
+  local id = macroid(macroOrId)
+  return not not self._running[id]
 end
 
 function engine:runCount()

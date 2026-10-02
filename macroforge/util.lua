@@ -3,6 +3,10 @@
 local util = {}
 
 function util.deepCopy(t)
+  -- The json.NULL sentinel is compared by identity everywhere else, so it must
+  -- never be cloned: a copy would silently stop being NULL.
+  local json = require("macroforge.json")
+  if t == json.NULL then return json.NULL end
   if type(t) ~= "table" then return t end
   local out = {}
   for k, v in pairs(t) do out[util.deepCopy(k)] = util.deepCopy(v) end

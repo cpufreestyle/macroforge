@@ -11,6 +11,7 @@
 local model = {}
 
 local util = require("macroforge.util")
+local json    = require("macroforge.json")
 local catalog = require("macroforge.catalog")
 
 local ID_PATTERN = "^[%w][%w%-_%.]*$"
@@ -25,9 +26,21 @@ local function canonicalType(typeStr, def)
   return tostring(typeStr or ""):lower()
 end
 
+-- macroforge/json decodes a JSON `null` into a sentinel table so the distinction
+-- between null and absent survives a round trip. Treat it as absent here:
+-- otherwise tostring() turns it into a table address in string parameters
+-- (which then passes validation and is typed straight into the frontmost app),
+-- and the same `null` is silently turned into a default for numbers.
+local function isNull(value)
+  return value == nil or value == json.NULL
+end
+
 function model.normalizeParams(params, def)
   local out = {}
-  for k, v in pairs(params or {}) do out[tostring(k)] = v end
+  for k, v in pairs(params or {}) do
+    if isNull(v) then v = nil end
+    out[tostring(k)] = v
+  end
   if not def then return out end
   for _, p in ipairs(def.params or {}) do
     local value = out[p.name]
@@ -52,6 +65,7 @@ function model.normalizeParams(params, def)
       if type(out[p.name]) == "string" then
         out[p.name] = out[p.name]:lower()
       end
+      if isNull(out[p.name]) then out[p.name] = nil end
       if out[p.name] == nil and p.default ~= nil then
         out[p.name] = p.default
       end
@@ -62,14 +76,43 @@ function model.normalizeParams(params, def)
   return out
 end
 
-function model.normalize(data)
+-- Derive a slug that does not collide with anything already registered.
+-- `taken` is a set of ids; without it the caller can only be told "macro-N".
+function model.uniqueSlug(name, taken)
+  local base = util.slugify(name)
+  if base ~= "macro" and not (taken and taken[base]) then return base end
+  local n = 1
+  while taken and taken[base .. "-" .. n] do n = n + 1 end
+  return base .. "-" .. n
+end
+
+function model.normalize(data, taken)
   local macro = util.deepCopy(type(data) == "table" and data or {})
 
+  -- A JSON null decodes into the NULL sentinel, which is a table, so trim()
+  -- stringifies it into the literal "json.null" -- a string that then passes
+  -- every validation check and leaks into ids and names. Treat null as absent
+  -- before anything derives from these two fields.
+  if isNull(macro.id) then macro.id = nil end
+  if isNull(macro.name) then macro.name = nil end
   macro.id = util.trim(macro.id)
-  if macro.id == "" then macro.id = util.slugify(macro.name) end
+  -- Two nameless macros both slugify to the literal "macro", which is not a
+  -- unique file name: the second save silently overwrites the first. Derive a
+  -- unique id per document instead. Callers that already know the used ids can
+  -- pass them in via the optional second argument.
+  if macro.id == "" then
+    macro.id = model.uniqueSlug(macro.name, taken)
+  end
   macro.name = util.trim(macro.name)
   if macro.name == "" and isSafeId(macro.id) then macro.name = macro.id end
   macro.enabled = macro.enabled ~= false
+  if isNull(macro.enabled) then macro.enabled = true end
+
+  -- A JSON null decodes to the NULL sentinel table, which is "a table", so a
+  -- `"trigger": null` document used to be normalised into a trigger of type
+  -- "" and rejected with a confusing "unknown trigger type" message. Treat it
+  -- as "no trigger" instead.
+  if isNull(macro.trigger) then macro.trigger = nil end
 
   if type(macro.trigger) == "table" then
     local triggerType = tostring(macro.trigger.type or ""):lower()
@@ -81,10 +124,15 @@ function model.normalize(data)
     macro.trigger = nil
   end
 
+  if isNull(macro.actions) then macro.actions = nil end
   if type(macro.actions) ~= "table" then macro.actions = {} end
   local actions = {}
   for _, action in ipairs(macro.actions) do
-    if type(action) == "table" then
+    -- A null element in the actions array decodes to the NULL sentinel, which
+    -- is "a table", so it used to become an action with an empty type that
+    -- validation then rejected as malformed. Drop null elements the same way
+    -- non-table elements are dropped.
+    if not isNull(action) and type(action) == "table" then
       local actionType = tostring(action.type or ""):lower()
       local def = catalog.actionDef(actionType)
       actions[#actions + 1] = {

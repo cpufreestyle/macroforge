@@ -53,8 +53,9 @@ function store:load()
               error = table.concat(problems, "; "),
               macro = macro,
             }
+          else
+            macros[#macros + 1] = macro
           end
-          macros[#macros + 1] = macro
         end
       end
     end
@@ -85,17 +86,47 @@ function store:byName(name)
   return nil
 end
 
+-- The set of ids already registered, used to keep derived ids unique.
+function store:takenIds()
+  local taken = {}
+  for _, macro in ipairs(self.macros) do
+    if macro.id then taken[macro.id] = true end
+  end
+  return taken
+end
+
 function store:save(macro)
-  local normalized = model.normalize(macro)
+  -- Pass the ids already on disk so a macro without an explicit id gets a
+  -- unique one instead of "macro", which is what two nameless macros both
+  -- derive, and therefore what makes the second save overwrite the first.
+  local normalized = model.normalize(macro, self:takenIds())
   local problems = model.validate(normalized)
   if #problems > 0 then
     return nil, table.concat(problems, "; ")
   end
   local path = joinPath(self.dir, normalized.id .. ".json")
+  normalized.file = nil
   self.fs.write(path, json.encode(normalized, true) .. "\n")
   self:load()
   local reloaded = self:byId(normalized.id)
   return reloaded or normalized
+end
+
+-- store:save derives the path from normalized.id, so a macro whose id changed
+-- since it was last written keeps the previous file on disk and the same macro
+-- becomes visible twice. saveRenaming() removes that stale file when the caller
+-- can tell us the id the macro had before the rename (the web editor does,
+-- because it only knows the id it loaded).
+function store:saveRenaming(macro, previousId)
+  local saved, err = self:save(macro)
+  if not saved then return nil, err end
+  if type(previousId) == "string" and previousId ~= ""
+    and previousId ~= saved.id
+    and previousId:match("^[%w][%w%-_%.]*$") and previousId ~= "." and previousId ~= ".." then
+    local stale = joinPath(self.dir, previousId .. ".json")
+    if self.fs.remove(stale) then self:load() end
+  end
+  return saved
 end
 
 function store:delete(id)

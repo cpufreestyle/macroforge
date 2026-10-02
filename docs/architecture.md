@@ -100,7 +100,7 @@ Three `hs.httpserver` contract details that are easy to get wrong:
 ./scripts/test.sh        # lua 5.3+, default binary name lua (override with LUA=...)
 ```
 
-- `tests/run.lua` — the runner: 68 tests, exit code 0 on success.
+- `tests/run.lua` — the runner: 86 tests, exit code 0 on success.
 - `tests/fake_env.lua` — a recording Hammerspoon stub (`env.calls`), so no test
   touches the real desktop.
 - Test files: `test_json`, `test_model`, `test_store`, `test_hsfs`, `test_actions`,
