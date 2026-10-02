@@ -31,6 +31,12 @@ function triggers.feedTyped(state, keyName, modifiers, entries)
     newState.buffer = newState.buffer:sub(-MAX_BUFFER)
   end
   local matches = {}
+  -- Exact match wins over a prefix of a longer trigger. With both ";m" and
+  -- ";mail" registered, typing ";m" fires the ";m" macro right away and
+  -- clears the buffer, so ";mail" never fires by accident. Keyboard Maestro
+  -- behaves the same: the short trigger is not swallowed while waiting to
+  -- see whether the user keeps typing. Entries sharing one trigger string
+  -- all fire, in registration order, and the buffer clears once.
   for _, entry in ipairs(entries or {}) do
     local text = tostring(entry.string or "")
     if #text > 0 and #newState.buffer >= #text and newState.buffer:sub(-#text) == text then
@@ -38,8 +44,10 @@ function triggers.feedTyped(state, keyName, modifiers, entries)
         macro = entry.macro,
         charsToDelete = (entry.delete == false) and 0 or #text,
       }
-      newState.buffer = ""
     end
+  end
+  if #matches > 0 then
+    newState.buffer = ""
   end
   return newState, matches
 end

@@ -87,7 +87,7 @@ unknown position falls back to the whole screen instead of failing.
 | type | parameters | effect |
 | --- | --- | --- |
 | `hotkey` | `key` (required), `mods` (default `cmd,ctrl`) | Bind a keyboard shortcut through `hs.hotkey`. |
-| `typed` | `string` (required), `delete` (bool, default true) | Fire when a string is typed (suffix match). Modifiers and special keys reset the buffer, and the typed characters are erased when `delete` is true. |
+| `typed` | `string` (required), `delete` (bool, default true) | Fire when a string is typed (suffix match). Modifiers and special keys reset the buffer, and the typed characters are erased when `delete` is true. When one trigger is a prefix of another (`;m` vs `;mail`), the exact match fires immediately and clears the buffer, so the longer one can still be typed from scratch afterwards. |
 | `appLaunch` | `app` (required) | Fire when the given app is launched. |
 | `windowFocused` | `app` (required) | Fire when a window of the given app gains focus. |
 | `interval` | `minutes` (required, default 30) | Fire every N minutes while Hammerspoon runs. |
