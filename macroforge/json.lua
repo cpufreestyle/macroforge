@@ -149,12 +149,36 @@ local function parseString(str, pos)
           return decodeError(pos, "invalid \\u escape")
         end
         local code = tonumber(hex, 16)
+        if code >= 0xD800 and code <= 0xDBFF then
+          -- High surrogate: a code point above the BMP arrives as a pair,
+          -- e.g. U+1F600 as \uD83D\uDE00. Combining the pair gives the
+          -- scalar value; encoding each half separately would emit two
+          -- invalid 3-byte sequences (the WTF-8 mojibake).
+          local lowHex = str:sub(pos + 8, pos + 11)
+          if str:sub(pos + 6, pos + 7) ~= "\\u"
+            or #lowHex < 4 or not lowHex:match("^%x%x%x%x$") then
+            return decodeError(pos, "unpaired surrogate in \\u escape")
+          end
+          local low = tonumber(lowHex, 16)
+          if low < 0xDC00 or low > 0xDFFF then
+            return decodeError(pos, "unpaired surrogate in \\u escape")
+          end
+          code = 0x10000 + (code - 0xD800) * 0x400 + (low - 0xDC00)
+          pos = pos + 6
+        elseif code >= 0xDC00 and code <= 0xDFFF then
+          return decodeError(pos, "unpaired surrogate in \\u escape")
+        end
         if code < 0x80 then
           buf[#buf + 1] = string.char(code)
         elseif code < 0x800 then
           buf[#buf + 1] = string.char(0xC0 + math.floor(code / 64), 0x80 + code % 64)
-        else
+        elseif code < 0x10000 then
           buf[#buf + 1] = string.char(0xE0 + math.floor(code / 4096),
+                                      0x80 + math.floor(code / 64) % 64,
+                                      0x80 + code % 64)
+        else
+          buf[#buf + 1] = string.char(0xF0 + math.floor(code / 262144),
+                                      0x80 + math.floor(code / 4096) % 64,
                                       0x80 + math.floor(code / 64) % 64,
                                       0x80 + code % 64)
         end

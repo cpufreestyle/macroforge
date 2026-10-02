@@ -70,6 +70,20 @@ test("model: validate catches unknown trigger and actions", function()
   truthy(joined:find("missing required parameter") ~= nil, joined)
 end)
 
+test("model: choice errors never leak a table address", function()
+  local macro = model.normalize({
+    name = "M",
+    actions = {
+      { type = "snapWindow", parameters = { position = { nested = true } } },
+    },
+  })
+  local errors = model.validate(macro)
+  local joined = table.concat(errors, "\n")
+  truthy(#errors > 0, "a table for a choice param should be rejected")
+  truthy(joined:find("0x") == nil, "error should not contain an address: " .. joined)
+  truthy(joined:find("<table>") ~= nil, "error should name the type: " .. joined)
+end)
+
 test("model: validate rejects invalid choices", function()
   local macro = model.normalize({
     name = "Bad choice",

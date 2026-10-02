@@ -162,8 +162,11 @@ function model.validateParams(def, params, prefix, errors)
         end
       elseif p.type == "choice" then
         if type(value) ~= "string" or not util.contains(p.choices or {}, value) then
+          -- %q on a table shows its address ("table: 0x..."), which leaks an
+          -- unstable pointer into user-facing errors; show the type instead.
+          local shown = type(value) == "string" and value or ("<" .. type(value) .. ">")
           errors[#errors + 1] = string.format("%s: %q (%q) must be one of: %s",
-            prefix, p.name, tostring(value), table.concat(p.choices or {}, ", "))
+            prefix, p.name, shown, table.concat(p.choices or {}, ", "))
         end
       end
     end
