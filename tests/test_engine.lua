@@ -170,3 +170,52 @@ test("engine: a bad nested playMacro reference does not deadlock the parent", fu
   })
   truthy(second, "parent should be runnable again, got: " .. tostring(reason))
 end)
+
+-- The production wiring passes Macroforge.resolve as callbacks.resolve, so a
+-- nested playMacro action can carry its target as a string (id or name) and
+-- still reach the macro table. This pins that contract end to end: the chain
+-- launch -> nested notify -> notify must all run and the parent must complete.
+test("engine: a string reference is resolved through callbacks.resolve", function()
+  local engine = engineMod.new({ notify = function() end })
+  local env = fake.new()
+  local inner = simpleMacro("inner", { "notify" })
+  local outer = {
+    id = "outer", name = "outer", enabled = true,
+    actions = {
+      { type = "launch", parameters = { app = "Safari" } },
+      { type = "playMacro", parameters = { macro = "inner" } },
+      { type = "notify", parameters = { title = "t", text = "x" } },
+    },
+  }
+  -- Mimic the production play closure: recursion back into the engine with
+  -- the same resolve hook.
+  local function play(reference, callbacks)
+    callbacks = callbacks or {}
+    return engine:playMacro(reference, {
+      env = env,
+      resolve = function(name) return name == "inner" and inner or nil end,
+      playMacro = play,
+      onComplete = callbacks.onComplete,
+      onError = callbacks.onError,
+    })
+  end
+  local completed = false
+  play(outer, { onComplete = function() completed = true end })
+  truthy(completed, "parent should complete after the nested macro ran")
+  eq({ "launchOrFocus", "notify", "notify" }, env:names())
+end)
+
+test("engine: an unresolvable string reference reports onError, not silence", function()
+  local engine = engineMod.new({ notify = function() end })
+  local env = fake.new()
+  local reason
+  local ok, err = engine:playMacro("missing", {
+    env = env,
+    resolve = function() return nil end,
+    onError = function(r) reason = r end,
+  })
+  falsy(ok)
+  truthy(reason and reason:find("missing") ~= nil, "got: " .. tostring(reason))
+  eq(err, reason)
+  eq(0, engine:runCount())
+end)

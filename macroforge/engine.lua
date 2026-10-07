@@ -22,13 +22,25 @@ end
 
 -- playMacro(macro, callbacks)
 --   callbacks.env       environment table passed to actions (required)
---   callbacks.playMacro function(nameOrMacro, callbacks) for chained macros
+--   callbacks.resolve   function(idOrName) -> macro table, for string references
+--   callbacks.playMacro function(reference, callbacks) for chained macros
 --   callbacks.onComplete, callbacks.onError
 -- Returns (started, reason).
 function engine:playMacro(macro, callbacks)
   callbacks = callbacks or {}
+  -- A nested playMacro action carries its target as a string (id or name).
+  -- Resolve it here so every entry point shares one code path, and report an
+  -- unresolvable reference through onError: a silent (false, reason) return
+  -- would strand the calling action's `done` and leak the re-entry guard.
+  if type(macro) ~= "table" and callbacks.resolve then
+    local resolved = callbacks.resolve(macro)
+    if type(resolved) == "table" then macro = resolved end
+  end
   if type(macro) ~= "table" then
-    return false, "macro must be a table"
+    local reason = type(macro) == "string" and ("macro not found: " .. tostring(macro))
+        or "macro must be a table"
+    if callbacks.onError then callbacks.onError(reason) end
+    return false, reason
   end
 
   local problems = model.validate(macro)
