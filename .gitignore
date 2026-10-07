@@ -2,3 +2,7 @@
 *.log
 logs/
 .hammerspoon/
+out/
+.mimosa/
+.v2c/
+.video_agent/
