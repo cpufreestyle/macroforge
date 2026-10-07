@@ -39,6 +39,7 @@ init.lua (Hammerspoon) ── require("macroforge").start()
 
 ```
 trigger fires → engine.playMacro(macro)
+   ├─ string references (nested playMacro) resolve via callbacks.resolve
    ├─ re-entry guard: refuse if the macro is already running
    ├─ for each action in order:
    │    ├─ resolve def from the catalog
@@ -100,11 +101,12 @@ Three `hs.httpserver` contract details that are easy to get wrong:
 ./scripts/test.sh        # lua 5.3+, default binary name lua (override with LUA=...)
 ```
 
-- `tests/run.lua` — the runner: 86 tests, exit code 0 on success.
+- `tests/run.lua` — the runner: 96 tests, exit code 0 on success.
 - `tests/fake_env.lua` — a recording Hammerspoon stub (`env.calls`), so no test
   touches the real desktop.
 - Test files: `test_json`, `test_model`, `test_store`, `test_hsfs`, `test_actions`,
-  `test_engine`, `test_triggers`, `test_router`, `test_editor`, `test_macros`.
+  `test_engine`, `test_triggers`, `test_router`, `test_editor`, `test_editor_runtime`,
+  `test_ui`, `test_macros`.
 
 To add a test, create `tests/test_<area>.lua` using the global `test(name, fn)`
 helper, `eq(expected, actual, message)` and `truthy(value, message)`.
