@@ -84,6 +84,23 @@ test("model: choice errors never leak a table address", function()
   truthy(joined:find("<table>") ~= nil, "error should name the type: " .. joined)
 end)
 
+test("model: choice validation is case-insensitive like normalization", function()
+  -- normalizeParams lowercases a choice value, so validation must not compare
+  -- case-sensitively: the editor writes "POST" for a list spelled "GET, POST".
+  local doc = {
+    id = "m", name = "m",
+    trigger = { type = "hotkey", parameters = { key = "m" } },
+    actions = { {
+      type = "httpRequest",
+      parameters = {
+        url = "https://example.com",
+        method = "POST",
+      },
+    } },
+  }
+  eq({}, model.validate(doc))
+end)
+
 test("model: validate rejects invalid choices", function()
   local macro = model.normalize({
     name = "Bad choice",

@@ -9,6 +9,7 @@ engine.__index = engine
 
 local actions = require("macroforge.actions")
 local model = require("macroforge.model")
+local vars = require("macroforge.vars")
 
 function engine.new(opts)
   opts = opts or {}
@@ -17,6 +18,11 @@ function engine.new(opts)
     notify = opts.notify or function() end,
     _running = {},
     _runs = 0,
+    -- Depth of the if-block currently being skipped. 0 means "run everything".
+    -- A stack would be more general, but blocks are strictly nested and each
+    -- if/endIf pair balances within one chain, so one counter per macro run is
+    -- enough and cannot drift.
+    _skipDepth = 0,
   }, engine)
 end
 
@@ -59,6 +65,9 @@ function engine:playMacro(macro, callbacks)
   end
   self._running[id] = true
   self._runs = self._runs + 1
+  -- Re-entry is refused above, so no other run of this macro is in flight and
+  -- the depth always starts at zero here.
+  local skipDepth = 0
 
   local chain = macro.actions
   local index = 1
@@ -71,6 +80,27 @@ function engine:playMacro(macro, callbacks)
     if callbacks.onError then callbacks.onError(reason) end
   end
 
+  -- The actions call these through env; they mutate the local skipDepth, which
+  -- is why the engine owns the block logic instead of the actions themselves.
+  -- Re-entry is refused above, so at most one run of this macro is live and a
+  -- single forwarded setter cannot be confused by a nested macro.
+  local function envSkip(take)
+    if take then skipDepth = skipDepth + 1 else skipDepth = math.max(0, skipDepth - 1) end
+  end
+  self.skipUntilEndIf = envSkip
+
+  -- Text parameters are expanded here rather than in each action, so every
+  -- string field supports {{name}} without the action knowing about variables.
+  local getVariable = callbacks.env and callbacks.env.getVariable
+  local function expandParams(params)
+    if not getVariable then return params end
+    local out = {}
+    for k, v in pairs(params or {}) do
+      out[k] = type(v) == "string" and vars.expand(v, getVariable) or v
+    end
+    return out
+  end
+
   local function step()
     if finished then return end
     if index > #chain then
@@ -81,12 +111,27 @@ function engine:playMacro(macro, callbacks)
     end
     local action = chain[index]
     index = index + 1
+    -- While a block is being skipped, only its own if/endIf markers are
+    -- interpreted: they keep the nesting balanced, and every other action is
+    -- dropped without being run. Skipping is synchronous -- the chain advances
+    -- through the block in one go -- so a skipped action can never leave the
+    -- macro stuck waiting for a done() that will not come.
+    if skipDepth > 0 then
+      local type = tostring(action.type or ""):lower()
+      if type == "if" then
+        envSkip(true)
+      elseif type == "endif" then
+        envSkip(false)
+      end
+      step()
+      return
+    end
     local def = actions.definition(action.type)
     if not def then
       fail(string.format("unknown action %q", tostring(action.type)))
       return
     end
-    local ok, err = pcall(def.run, callbacks.env, action.parameters or {}, function()
+    local ok, err = pcall(def.run, callbacks.env, expandParams(action.parameters), function()
       self.schedule(0, step)
     end, callbacks.playMacro)
     if not ok then

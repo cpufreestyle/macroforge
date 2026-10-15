@@ -16,6 +16,7 @@ local VERSION = "0.1.0"
 
 local json       = require("macroforge.json")
 local util       = require("macroforge.util")
+local vars       = require("macroforge.vars")
 local model      = require("macroforge.model")
 local catalog    = require("macroforge.catalog")
 local actionsMod = require("macroforge.actions")
@@ -124,6 +125,88 @@ local function buildEnv(hsInstance, notify)
   env.timerAfter = function(seconds, fn)
     hsInstance.timer.doAfter(seconds, fn)
   end
+
+  -- Variables, conditions and HTTP are the three capabilities Macroforge was
+  -- missing next to every comparable tool. They all reach Hammerspoon here and
+  -- nowhere else, so the engine and the actions stay plain Lua.
+
+  -- Installed by the engine at the start of each run so the if/endIf actions
+  -- can move the engine's block counter. A no-op keeps a bare action call (from
+  -- the console, say) from crashing on a nil.
+  env.skipUntilEndIf = function() end
+
+  env.setVariable = function(name, value)
+    vars.set(name, value)
+    return value
+  end
+  env.getVariable = function(name)
+    return vars.get(name)
+  end
+
+  -- Conditions ask the OS through this table. Each entry is a function so a
+  -- probe that cannot answer is distinguishable from one that answered no.
+  env.probe = function()
+    return {
+      runningApps = function()
+        local names = {}
+        for _, app in ipairs(hsInstance.application.runningApplications() or {}) do
+          local title = app:title()
+          if title then names[#names + 1] = title end
+        end
+        return names
+      end,
+      frontmostApp = function()
+        local app = hsInstance.application.frontmostApplication()
+        return app and app:title() or ""
+      end,
+      screenCount = function()
+        return #(hsInstance.screen.allScreens() or {})
+      end,
+      batteryLevel = function()
+        if hsInstance.battery then
+          local pct = hsInstance.battery.percentage()
+          return pct and pct * 100 or nil
+        end
+        return nil
+      end,
+      minutesOfDay = function()
+        local d = hsInstance.timer.secondsSinceEpoch() % 86400
+        return math.floor(d / 60)
+      end,
+      networkReachable = function()
+        -- Conservative by design: a macro must not take a slow branch because a
+        -- probe was still in flight. Anything unreachable reports false.
+        return false
+      end,
+      getVariable = function(name)
+        return vars.get(name)
+      end,
+    }
+  end
+
+  env.httpRequest = function(opts, callback)
+    -- hs.http is async, which is what keeps the Hammerspoon main loop free.
+    -- The body comes back as a string so a macro can store or parse it.
+    local function finish(body, err)
+      -- hs.http may call back on a timer thread; hop back to the main thread
+      -- before touching any action state.
+      hsInstance.timer.doAfter(0, function()
+        callback(body, err)
+      end)
+    end
+    hsInstance.http.asyncRequest({
+      url = vars.expand(opts.url or "", vars.get),
+      method = opts.method or "GET",
+      payload = opts.body and vars.expand(opts.body, vars.get) or nil,
+    }, function(status, body)
+      if status < 200 or status >= 300 then
+        finish(body, "HTTP " .. tostring(status))
+        return
+      end
+      finish(body, nil)
+    end)
+  end
+
   return env
 end
 
@@ -299,6 +382,9 @@ function Macroforge.start(opts)
     callbacks = callbacks or {}
     return engine:playMacro(macro, {
       env = env,
+      -- if/endIf drive the engine's block counter through this hook. A fresh
+      -- table per run keeps nested macros from sharing one counter.
+      skipUntilEndIf = function(take) engine.skipUntilEndIf(take) end,
       -- A nested playMacro action carries the target as a string (id or
       -- name); the engine resolves it through this hook, so chooser, console
       -- and nesting all run on the same code path.

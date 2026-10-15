@@ -1,0 +1,22 @@
+{
+  "id": "post-slack-if-safari",
+  "name": "Post to Slack only when Safari is up",
+  "enabled": true,
+  "trigger": {
+    "type": "hotkey",
+    "parameters": { "mods": "cmd,ctrl,alt", "key": "s" }
+  },
+  "actions": [
+    { "type": "if", "parameters": { "condition": "appRunning", "app": "Safari" } },
+    { "type": "setVariable", "parameters": { "name": "target", "value": "Safari is running" } },
+    { "type": "httpRequest", "parameters": {
+      "url": "https://hooks.slack.com/services/REPLACE-WITH-YOUR-WEBHOOK",
+      "method": "POST",
+      "body": "{\"text\": \"{{target}}\"}",
+      "into": "slackReply"
+    } },
+    { "type": "endIf", "parameters": {} },
+    { "type": "notify", "parameters": { "title": "Macroforge", "text": "Slack reply: {{slackReply}}" } }
+  ]
+}
+

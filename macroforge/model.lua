@@ -161,7 +161,15 @@ function model.validateParams(def, params, prefix, errors)
           errors[#errors + 1] = string.format("%s: %q must be a boolean", prefix, p.name)
         end
       elseif p.type == "choice" then
-        if type(value) ~= "string" or not util.contains(p.choices or {}, value) then
+        -- normalizeParams lowercases choice values, so compare case-insensitively.
+        -- A case-sensitive check here would reject "POST" for a choices list
+        -- spelled "GET, POST, PUT, DELETE" -- exactly what the editor writes.
+        local lowered = type(value) == "string" and value:lower() or nil
+        local allowed = false
+        for _, choice in ipairs(p.choices or {}) do
+          if tostring(choice):lower() == lowered then allowed = true break end
+        end
+        if not allowed then
           -- %q on a table shows its address ("table: 0x..."), which leaks an
           -- unstable pointer into user-facing errors; show the type instead.
           local shown = type(value) == "string" and value or ("<" .. type(value) .. ">")

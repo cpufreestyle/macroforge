@@ -50,6 +50,10 @@ local files = {
   "test_editor_runtime",
   "test_ui",
   "test_macros",
+  "test_vars",
+  "test_conditions",
+  "test_blocks",
+  "test_env_contract",
 }
 
 for _, name in ipairs(files) do

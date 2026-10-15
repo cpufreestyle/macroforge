@@ -8,6 +8,7 @@ router.__index = router
 
 local json = require("macroforge.json")
 local catalog = require("macroforge.catalog")
+local conditions = require("macroforge.conditions")
 
 local BASE = "/macroforge"
 
@@ -49,7 +50,13 @@ function router:route(method, path, body)
   end
 
   if method == "GET" and path == BASE .. "/api/catalog" then
-    return send(200, json.encode({ actions = catalog.actions, triggers = catalog.triggers }))
+    return send(200, json.encode({
+      actions = catalog.actions,
+      triggers = catalog.triggers,
+      -- The editor uses this list to suggest condition names for the if action,
+      -- so it stays in step with conditions.lua instead of a hand-kept copy.
+      conditions = conditions.types(),
+    }))
   end
 
   if method == "GET" and path == BASE .. "/api/macros" then

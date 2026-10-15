@@ -13,6 +13,8 @@
 | `actions.lua` | built-in action implementations, registered into the catalog at load time. |
 | `triggers.lua` | binds hot keys, typed strings, app launch/focus and timers to the engine. |
 | `router.lua` | dependency-free HTTP API that backs the web editor. |
+| `conditions.lua` | the predicates behind `if`: app state, screens, battery, clock, variables, network. Pure, driven by a probe table. |
+| `vars.lua` | the shared variable table actions read and write, plus `{{name}}` expansion. |
 | `chooser.lua` | `hs.chooser` palettes: run, manage, reload. |
 | `editor.lua` | serves `assets/editor.html` for the base path. |
 | `init.lua` | the only module that touches Hammerspoon: adapters, lifecycle (`start/reload/stop`), console logging. |
@@ -101,12 +103,13 @@ Three `hs.httpserver` contract details that are easy to get wrong:
 ./scripts/test.sh        # lua 5.3+, default binary name lua (override with LUA=...)
 ```
 
-- `tests/run.lua` — the runner: 96 tests, exit code 0 on success.
+- `tests/run.lua` — the runner: 134 tests, exit code 0 on success.
 - `tests/fake_env.lua` — a recording Hammerspoon stub (`env.calls`), so no test
   touches the real desktop.
 - Test files: `test_json`, `test_model`, `test_store`, `test_hsfs`, `test_actions`,
   `test_engine`, `test_triggers`, `test_router`, `test_editor`, `test_editor_runtime`,
-  `test_ui`, `test_macros`.
+  `test_ui`, `test_macros`, `test_vars`, `test_conditions`, `test_blocks`,
+  `test_env_contract`.
 
 To add a test, create `tests/test_<area>.lua` using the global `test(name, fn)`
 helper, `eq(expected, actual, message)` and `truthy(value, message)`.

@@ -151,6 +151,42 @@ catalog.actions = {
       { name = "macro", type = "macro", required = true },
     },
   },
+  {
+    type = "if",
+    label = "If condition",
+    description = "Run the following actions only when the condition holds. Every action between this and the matching endIf is skipped when it does not.",
+    params = {
+      { name = "condition", type = "string", required = true, placeholder = "appRunning" },
+      { name = "negate", type = "boolean", default = false, label = "Invert the condition" },
+    },
+  },
+  {
+    type = "setVariable",
+    label = "Set variable",
+    description = "Store a value under a name. Other actions read it with {{name}} in any text field.",
+    params = {
+      { name = "name", type = "string", required = true, placeholder = "lastApp" },
+      { name = "value", type = "string", required = true, placeholder = "Safari" },
+    },
+  },
+  {
+    type = "endIf",
+    label = "End if",
+    description = "Close an if block. Actions after this always run.",
+    params = {},
+  },
+  {
+    type = "httpRequest",
+    label = "HTTP request",
+    description = "Call a URL and store the response body in a variable. Use it to trigger a webhook or read a JSON endpoint.",
+    params = {
+      { name = "url", type = "string", required = true, placeholder = "https://example.com/hook" },
+      { name = "method", type = "choice", required = true, default = "GET",
+        choices = { "GET", "POST", "PUT", "DELETE" } },
+      { name = "body", type = "text", placeholder = [[{"key": "value"}]] },
+      { name = "into", type = "string", placeholder = "httpBody" },
+    },
+  },
 }
 
 catalog.triggers = {
