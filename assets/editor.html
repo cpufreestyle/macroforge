@@ -1141,7 +1141,10 @@
     if (kind !== 'text') control.type = 'text';
     control.value = value === undefined ? esc(def.default) : esc(value);
     if (def.placeholder) control.placeholder = def.placeholder;
-    if (String(def.name).toLowerCase() === 'macro') control.setAttribute('list', 'macro-id-list');
+    var paramName = String(def.name).toLowerCase();
+    if (paramName === 'macro') control.setAttribute('list', 'macro-id-list');
+    // The if action takes a condition name; suggest the ones the engine knows.
+    if (paramName === 'condition') control.setAttribute('list', 'condition-list');
     return { node: control, wrap: kind === 'text' ? 'span' : (wide ? '' : ''), label: def.label || def.name };
   }
 
@@ -1600,6 +1603,23 @@
     });
   }
 
+  // A second datalist for the if action: the condition names come from the
+  // engine, so the suggestions cannot drift from what it can answer.
+  function ensureConditionList() {
+    var host = $('condition-list');
+    if (!host) {
+      host = document.createElement('datalist');
+      host.id = 'condition-list';
+      document.body.appendChild(host);
+    }
+    host.textContent = '';
+    (state.catalog.conditions || []).forEach(function (name) {
+      var option = document.createElement('option');
+      option.value = name;
+      host.appendChild(option);
+    });
+  }
+
   function newMacro() {
     if (state.dirty && !confirm('放弃未存储的修改？')) return;
     var used = {};
@@ -1634,6 +1654,7 @@
         if (fresh && !state.dirty) state.current = fresh;
       }
       ensureDatalist();
+      ensureConditionList();
       renderList();
       if (state.current) {
         if (state.mode === 'form') renderForm();

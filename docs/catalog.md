@@ -81,6 +81,10 @@ unknown position falls back to the whole screen instead of failing.
 | type | parameters | effect |
 | --- | --- | --- |
 | `playMacro` | `macro` (required) | Run another macro as part of this one. The reference is resolved by id first, then by name. |
+| `if` | `condition` (required), `negate` (bool, default false) | Run the actions up to the matching `endIf` only when the condition holds. |
+| `endIf` | | Close an `if` block. Actions after it always run. |
+| `setVariable` | `name`, `value` (required) | Store a value under a name. Read it back with `{{name}}` in any text field. |
+| `httpRequest` | `url`, `method` (required), `body`, `into` | Call a URL and store the response body in the variable named by `into`. Asynchronous, so the Hammerspoon main loop stays free. |
 
 ## Triggers
 
@@ -94,6 +98,26 @@ unknown position falls back to the whole screen instead of failing.
 
 `hs.hotkey` conflicts with system or Hammerspoon bindings silently; check the
 Hammerspoon console for `Macroforge` messages when a hot key does nothing.
+
+## Conditions
+
+The `if` action takes a condition name. All of them are plain questions about
+the machine, so a macro behaves the same way every time it is asked:
+
+| condition | parameters | true when |
+| --- | --- | --- |
+| `appRunning` | `app` | An app with that name is running (case-insensitive). |
+| `frontmostApp` | `app` | The frontmost app has that name. |
+| `screenCount` | `op`, `count` | The number of screens satisfies the comparison. |
+| `variable` | `name`, `op`, `value` | A stored variable satisfies the comparison. |
+| `batteryLevel` | `op`, `level` | The battery percentage satisfies the comparison. False on a desktop, where there is no battery to ask. |
+| `timeOfDay` | `after`, `before` | The current time is inside the `HH:MM` window. A window that crosses midnight (`22:00` to `06:00`) wraps instead of inverting. |
+| `networkReachable` | `host` | The host is reachable. Conservative: an unreachable host reports false rather than leaving the branch undecided. |
+
+`op` is one of `equals`, `notEquals`, `contains`, `greaterThan`, `lessThan`,
+`greaterOrEqual`, `lessOrEqual`. A condition that cannot be answered — an
+unknown name, or a probe that is missing — is reported as a notification and
+the body runs, because silently treating a typo as "false" would hide it.
 
 ## Registering your own action
 

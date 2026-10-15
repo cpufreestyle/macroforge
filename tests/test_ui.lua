@@ -38,6 +38,7 @@ end
 -- Ids the script builds at runtime, so the markup cannot contain them.
 local RUNTIME_IDS = {
   ["macro-id-list"] = true, -- ensureDatalist() appends the <datalist> itself
+  ["condition-list"] = true, -- ensureConditionList() does the same
 }
 
 -- Ids the script must definitely look up; they keep jsLookupIds honest, so a

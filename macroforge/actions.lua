@@ -17,6 +17,9 @@
 --   env.getClipboard(), env.setClipboard(text)
 --   env.timerAfter(seconds, fn)
 
+local conditions = require("macroforge.conditions")
+local vars        = require("macroforge.vars")
+
 local actions = {}
 
 local catalog = require("macroforge.catalog")
@@ -168,6 +171,60 @@ defs.playmacro = {
     if started == false and not settled then
       settle(reason or "nested macro did not start")
     end
+  end,
+}
+
+defs.setvariable = {
+  run = sync(function(env, params)
+    env.setVariable(params.name, params.value)
+  end),
+}
+
+-- if/endIf are the only two actions that talk to the chain itself: they tell
+-- the engine whether the upcoming block runs. The engine owns the counter so
+-- nested blocks stay balanced even when a body is skipped.
+-- "if" is a Lua keyword, so the entry needs the bracket form; the lookup
+-- path lowercases the type, so "if" still resolves from a macro document.
+defs["if"] = {
+  run = function(env, params, done)
+    local result, reason = conditions.evaluate(
+      { type = params.condition, parameters = params }, env.probe())
+    if reason then
+      env.notify("Macroforge", "if: " .. reason)
+      done()
+      return
+    end
+    -- negate inverts the answer but never the error: an unknown condition is a
+    -- typo, and silently running the body would hide it.
+    local take = result
+    if params.negate then take = not take end
+    env.skipUntilEndIf(not take)
+    done()
+  end,
+}
+
+defs.endif = {
+  run = sync(function(env)
+    env.skipUntilEndIf(false)
+  end),
+}
+
+defs.httprequest = {
+  run = function(env, params, done)
+    -- Asynchronous: the chain resumes from the callback, so a slow endpoint
+    -- never blocks the Hammerspoon main loop.
+    env.httpRequest({
+      url = params.url,
+      method = params.method,
+      body = params.body,
+    }, function(body, err)
+      if err then
+        env.notify("Macroforge", "HTTP request failed: " .. tostring(err))
+      elseif params.into and params.into ~= "" then
+        env.setVariable(params.into, body)
+      end
+      done()
+    end)
   end,
 }
 
