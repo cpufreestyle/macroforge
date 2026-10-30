@@ -853,6 +853,11 @@
 <script>
 (function () {
   var BASE = '/macroforge';
+  // Opened from disk instead of from the server? A relative BASE then resolves
+  // against file:// and every fetch fails with "Failed to fetch", which says
+  // nothing about the real cause. The page is a view of the Hammerspoon API, so
+  // it must be served from http://127.0.0.1:8099/macroforge/ to work at all.
+  var SERVED_URL = 'http://127.0.0.1:8099' + BASE + '/';
   var state = {
     catalog: { actions: [], triggers: [] },
     macros: [],
@@ -872,6 +877,16 @@
     return String(text === undefined || text === null ? '' : text)
   }
 
+  // A fetch that never reaches the server (Hammerspoon down, or this page
+  // opened from disk) rejects with the bare "Failed to fetch". Replace that
+  // with the reason and the address the page needs, so the toast is actionable.
+  function unreachable(path) {
+    var reason = location.protocol === 'file:'
+      ? '页面是从磁盘打开的（file://），API 只能通过 HTTP 访问'
+      : 'Hammerspoon 可能没有运行，或端口被占用';
+    return new Error(reason + '。请在浏览器打开 ' + SERVED_URL);
+  }
+
   function api(path, options) {
     options = options || {};
     var init = { method: options.method || 'GET', headers: {} };
@@ -879,7 +894,9 @@
       init.headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(options.body);
     }
-    return fetch(BASE + path, init).then(function (res) {
+    return fetch(BASE + path, init).then(undefined, function () {
+      throw unreachable(path);
+    }).then(function (res) {
       return res.text().then(function (raw) {
         var data = null;
         try { data = raw ? JSON.parse(raw) : {}; }
@@ -1323,7 +1340,11 @@
       return;
     }
     var clash = byId(id);
-    if (clash && clash !== state.current) {
+    // The macro being edited is the one state.macros knows under
+    // state.selectedId, not whatever object state.current happens to be: after
+    // a JSON-mode load or edit, state.current is a detached copy, so comparing
+    // object identity here reports the macro as a duplicate of itself.
+    if (clash && clash.id !== state.selectedId) {
       hint.textContent = '该 ID 已被 "' + clash.name + '" 占用';
       return;
     }
@@ -1413,7 +1434,11 @@
       problems.push('ID 只能包含字母、数字、-、_、.，且不能以 . 开头。');
     } else {
       var clash = byId(macro.id);
-      if (clash && clash !== state.current) problems.push('ID 与 "' + clash.name + '" 重复。');
+      // state.selectedId is the id this macro had on disk, so a macro keeping
+      // its own id is not a clash with itself. Comparing state.current (or the
+      // macro argument, which save() has already made identical to it) would
+      // always match and never report a duplicate.
+      if (clash && clash.id !== state.selectedId) problems.push('ID 与 "' + clash.name + '" 重复。');
     }
     if (!macro.actions || !macro.actions.length) problems.push('至少需要一个动作。');
     if (macro.trigger && macro.trigger.type) {
@@ -1780,6 +1805,14 @@
   function boot() {
     wire();
     renderStatus();
+    // The page is only useful when Hammerspoon serves it. Opened from disk the
+    // API is unreachable by construction, so say so before the first request
+    // rather than reporting each failed fetch as a separate mystery.
+    if (location.protocol === 'file:') {
+      $('empty-hint').innerHTML = '这个页面是从磁盘打开的。请在浏览器中打开 <a href="'
+        + SERVED_URL + '">' + SERVED_URL + '</a> 以连接 Macroforge 运行时。';
+      return;
+    }
     loadAll().then(function () {
       var sorted = state.macros.slice().sort(function (a, b) {
         return esc(a.name).localeCompare(esc(b.name));

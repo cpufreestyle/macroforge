@@ -86,7 +86,15 @@ The editor file lives at the **project root** (`assets/editor.html`), not inside
 `macroforge/`: runtime paths resolve against the project root, so `macroforge/`
 is the Lua module directory only.
 
-Three `hs.httpserver` contract details that are easy to get wrong:
+Every API path refuses a request whose `Origin` is not loopback with
+`403 {"error":"refused: this API only accepts requests from the local editor"}`.
+A request with no `Origin` is allowed, because only browsers send one. This is
+checked rather than worked around with CORS headers, because a "simple request"
+(a POST or DELETE with a `text/plain` body) needs no preflight and no permission
+to read the response, so omitting `Access-Control-Allow-Origin` would not stop a
+webpage from running a `runShell` macro or rewriting macro files.
+
+Four `hs.httpserver` contract details that are easy to get wrong:
 
 - `hs.httpserver.new()` takes a boolean, not a callback. Install the handler
   afterwards with `server:setCallback(fn)`.
@@ -96,6 +104,10 @@ Three `hs.httpserver` contract details that are easy to get wrong:
 - libwebserver answers a bodyless POST with `400 Bad Request` before the callback
   runs, so every POST endpoint (`/api/reload`, `/api/run`) must be called with a
   JSON body such as `{}`.
+- The listen address is `server:setInterface("loopback")` — there is no
+  `setAddress` — and it must be set before `server:start()`. The default is every
+  interface, which puts the API on the LAN; `editor.start` raises instead of
+  starting a server it cannot pin.
 
 ## Tests
 
@@ -103,16 +115,15 @@ Three `hs.httpserver` contract details that are easy to get wrong:
 ./scripts/test.sh        # lua 5.3+, default binary name lua (override with LUA=...)
 ```
 
-- `tests/run.lua` — the runner: 134 tests, exit code 0 on success.
-- `tests/fake_env.lua` — a recording Hammerspoon stub (`env.calls`), so no test
-  touches the real desktop.
-- Test files: `test_json`, `test_model`, `test_store`, `test_hsfs`, `test_actions`,
-  `test_engine`, `test_triggers`, `test_router`, `test_editor`, `test_editor_runtime`,
-  `test_ui`, `test_macros`, `test_vars`, `test_conditions`, `test_blocks`,
-  `test_env_contract`.
+145 tests, 0 failures. The runner is `tests/run.lua`, the fake Hammerspoon
+environment is `tests/fake_env.lua`, and the Node-based stub-DOM smoke test is
+`tests/editor_smoke.mjs` driven by `tests/test_editor_runtime.lua`. See
+[`HARNESS.md`](HARNESS.md) for the file-by-file inventory, the env-contract
+check, and the mutation testing that proves the suite has teeth.
 
 To add a test, create `tests/test_<area>.lua` using the global `test(name, fn)`
-helper, `eq(expected, actual, message)` and `truthy(value, message)`.
+helper, `eq(expected, actual, message)` and `truthy(value, message)`, then add it
+to the hardcoded `files` list in `tests/run.lua`.
 
 ## Roadmap to Keyboard Maestro parity
 

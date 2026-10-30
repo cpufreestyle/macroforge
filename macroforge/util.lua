@@ -46,13 +46,6 @@ function util.splitMods(s)
   return out
 end
 
-function util.contains(list, value)
-  for _, v in ipairs(list) do
-    if v == value then return true end
-  end
-  return false
-end
-
 function util.slugify(text)
   local slug = tostring(text or ""):lower()
   slug = slug:gsub("[^%w%-_]+", "-")
@@ -64,16 +57,6 @@ end
 
 function util.shellQuote(s)
   return "'" .. tostring(s or ""):gsub("'", "'\\''") .. "'"
-end
-
-function util.count(t)
-  local n = 0
-  for _ in pairs(t) do n = n + 1 end
-  return n
-end
-
-function util.now()
-  return os.time()
 end
 
 return util

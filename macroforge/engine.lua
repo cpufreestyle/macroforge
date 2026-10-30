@@ -13,17 +13,28 @@ local vars = require("macroforge.vars")
 
 function engine.new(opts)
   opts = opts or {}
-  return setmetatable({
+  local self = setmetatable({
     schedule = opts.schedule or function(_, fn) fn() end,
     notify = opts.notify or function() end,
     _running = {},
     _runs = 0,
-    -- Depth of the if-block currently being skipped. 0 means "run everything".
-    -- A stack would be more general, but blocks are strictly nested and each
-    -- if/endIf pair balances within one chain, so one counter per macro run is
-    -- enough and cannot drift.
-    _skipDepth = 0,
+    -- Runs with an action executing right now, innermost last. if/endIf move
+    -- the counter of the run on top, so a nested macro and a macro the event
+    -- loop interleaved with it never move each other's depth.
+    _active = {},
   }, engine)
+
+  -- The one skip hook for the whole engine. The env is a single session-wide
+  -- table shared by every run, so it cannot hold "the run that is executing":
+  -- it holds this instead, which forwards to whichever run is running an
+  -- action. With nothing active it does nothing, exactly like the no-op
+  -- default init.lua installs for a bare action call.
+  self.skipUntilEndIf = function(take)
+    local run = self._active[#self._active]
+    if run then run.skip(take) end
+  end
+
+  return self
 end
 
 -- playMacro(macro, callbacks)
@@ -80,14 +91,20 @@ function engine:playMacro(macro, callbacks)
     if callbacks.onError then callbacks.onError(reason) end
   end
 
-  -- The actions call these through env; they mutate the local skipDepth, which
+  -- The actions call this through env; it mutates the local skipDepth, which
   -- is why the engine owns the block logic instead of the actions themselves.
-  -- Re-entry is refused above, so at most one run of this macro is live and a
-  -- single forwarded setter cannot be confused by a nested macro.
+  -- Re-entry is refused above, so the depth always starts at zero here and one
+  -- counter per macro run is enough: blocks are strictly nested and every
+  -- if/endIf pair balances within one chain, so it cannot drift.
   local function envSkip(take)
     if take then skipDepth = skipDepth + 1 else skipDepth = math.max(0, skipDepth - 1) end
   end
-  self.skipUntilEndIf = envSkip
+
+  -- Point the env at the engine's dispatch hook for this run. The env is built
+  -- once per session and shared by every run, so this is what makes if/endIf
+  -- reach the counter of the run that is actually executing them; without it
+  -- they call the no-op default and skip nothing.
+  if callbacks.env then callbacks.env.skipUntilEndIf = self.skipUntilEndIf end
 
   -- Text parameters are expanded here rather than in each action, so every
   -- string field supports {{name}} without the action knowing about variables.
@@ -131,9 +148,15 @@ function engine:playMacro(macro, callbacks)
       fail(string.format("unknown action %q", tostring(action.type)))
       return
     end
+    -- Publish this run while the action executes so the dispatch hook forwards
+    -- to it. Truncating back to `depth` instead of assuming we are still on top
+    -- keeps the stack honest when a nested chain ran to completion inside done.
+    local depth = #self._active
+    self._active[depth + 1] = { skip = envSkip }
     local ok, err = pcall(def.run, callbacks.env, expandParams(action.parameters), function()
       self.schedule(0, step)
     end, callbacks.playMacro)
+    while #self._active > depth do self._active[#self._active] = nil end
     if not ok then
       if macro.continueOnError then
         self.schedule(0, step)

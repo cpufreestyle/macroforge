@@ -124,6 +124,83 @@ test("router: OPTIONS and 404 fallbacks", function()
   eq(404, router:route("GET", "/macroforge/unknown", ""))
 end)
 
+-- Dropping the CORS header is not enough on its own. A "simple request" -- POST
+-- or DELETE carrying a text/plain body -- is sent without a preflight and the
+-- response never has to be readable for the damage to be done, so a foreign
+-- Origin must be refused outright. Browsers attach Origin to same-origin
+-- non-GET requests too, so a loopback Origin stays legitimate.
+test("router: a foreign Origin is refused on every API path", function()
+  local files = {
+    ["m.json"] = json.encode({
+      id = "m", name = "m", enabled = true,
+      actions = { { type = "runShell", parameters = { command = "true" } } },
+    }),
+  }
+  local foreign = { Origin = "https://evil.example" }
+  local router = makeRouter(files)
+
+  local status, body = router:route("POST", "/macroforge/api/run", json.encode({ id = "m" }), foreign)
+  eq(403, status)
+  truthy(body:find("local editor", 1, true), "the refusal says why")
+
+  eq(403, router:route("GET", "/macroforge/api/macros", "", foreign))
+  eq(403, router:route("DELETE", "/macroforge/api/macros/m", "", foreign))
+  eq(403, router:route("POST", "/macroforge/api/macros", json.encode({ id = "m" }), foreign))
+  eq(403, router:route("POST", "/macroforge/api/reload", "", foreign))
+
+  local _, after = makeRouter(files)
+  eq(0, after.runs(), "no macro was started by the refused request")
+end)
+
+test("router: a loopback Origin is accepted", function()
+  local files = {
+    ["m.json"] = json.encode({
+      id = "m", name = "m", enabled = true,
+      actions = { { type = "notify", parameters = { title = "t", text = "x" } } },
+    }),
+  }
+  for _, origin in ipairs({
+    "http://127.0.0.1:8099",
+    "http://localhost:8099",
+    "http://[::1]:8099",
+    "https://127.0.0.1",
+    "HTTP://127.0.0.1:8099",
+  }) do
+    local router, probe = makeRouter(files)
+    local status = router:route("POST", "/macroforge/api/run", json.encode({ id = "m" }), { Origin = origin })
+    eq(200, status, "accepted " .. origin)
+    eq(1, probe.runs())
+  end
+end)
+
+test("router: a malformed Origin is refused, a missing one is allowed", function()
+  local files = {
+    ["m.json"] = json.encode({
+      id = "m", name = "m", enabled = true,
+      actions = { { type = "notify", parameters = { title = "t", text = "x" } } },
+    }),
+  }
+  local router = makeRouter(files)
+  -- Only a browser ever sends Origin, so its absence means a local caller such
+  -- as the console or curl.
+  eq(200, router:route("POST", "/macroforge/api/run", json.encode({ id = "m" })))
+  eq(403, router:route("POST", "/macroforge/api/run", json.encode({ id = "m" }), { Origin = "not a url" }))
+  eq(403, router:route("POST", "/macroforge/api/run", json.encode({ id = "m" }), { Origin = "file:///x" }))
+  eq(403, router:route("POST", "/macroforge/api/run", json.encode({ id = "m" }), { Origin = "http://127.0.0.1.evil.example:80" }))
+end)
+
+test("router: the header lookup ignores case", function()
+  local files = {
+    ["m.json"] = json.encode({
+      id = "m", name = "m", enabled = true,
+      actions = { { type = "notify", parameters = { title = "t", text = "x" } } },
+    }),
+  }
+  local router = makeRouter(files)
+  eq(403, router:route("POST", "/macroforge/api/run", json.encode({ id = "m" }), { origin = "http://evil.example" }))
+  eq(403, router:route("POST", "/macroforge/api/run", json.encode({ id = "m" }), { ORIGIN = "http://evil.example" }))
+end)
+
 -- The editor is same-origin with its API, so no response needs CORS. A
 -- wildcard Access-Control-Allow-Origin let any website POST /api/run (a
 -- simple request, no preflight) and execute runShell macros, or read and

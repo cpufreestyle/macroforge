@@ -130,9 +130,10 @@ local function buildEnv(hsInstance, notify)
   -- missing next to every comparable tool. They all reach Hammerspoon here and
   -- nowhere else, so the engine and the actions stay plain Lua.
 
-  -- Installed by the engine at the start of each run so the if/endIf actions
-  -- can move the engine's block counter. A no-op keeps a bare action call (from
-  -- the console, say) from crashing on a nil.
+  -- A no-op default: the engine replaces this with its dispatch hook on the
+  -- env of every run it starts, so if/endIf reach the counter of that run. The
+  -- default matters only for a bare action call (from the console, say) with no
+  -- run in flight, which would otherwise crash on a nil.
   env.skipUntilEndIf = function() end
 
   env.setVariable = function(name, value)
@@ -382,9 +383,6 @@ function Macroforge.start(opts)
     callbacks = callbacks or {}
     return engine:playMacro(macro, {
       env = env,
-      -- if/endIf drive the engine's block counter through this hook. A fresh
-      -- table per run keeps nested macros from sharing one counter.
-      skipUntilEndIf = function(take) engine.skipUntilEndIf(take) end,
       -- A nested playMacro action carries the target as a string (id or
       -- name); the engine resolves it through this hook, so chooser, console
       -- and nesting all run on the same code path.

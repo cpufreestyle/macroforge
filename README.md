@@ -109,6 +109,10 @@ snapping, dev-stack launcher, e-mail signature, hourly stretch reminder).
 - [`docs/catalog.md`](docs/catalog.md) — every action and trigger with parameters.
 - [`docs/architecture.md`](docs/architecture.md) — module map, extension points,
   test strategy and the roadmap toward Keyboard Maestro parity.
+- [`docs/SPEC.md`](docs/SPEC.md) — the behavioural contract: execution
+  semantics, the HTTP API, and the local-only request policy.
+- [`docs/HARNESS.md`](docs/HARNESS.md) — the offline test harness, how to add
+  a test, and what the suite cannot prove.
 
 ## Project layout
 

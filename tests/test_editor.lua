@@ -6,15 +6,20 @@
 --   2. hs.httpserver callbacks must return (body, status, headers), which is the
 --      reverse of the router's (status, body, headers) convention. Returning them
 --      in the router's order made every request answer 503.
+--   3. The server must be pinned to loopback with setInterface. There is no
+--      setAddress, so a typo there silently left the API listening on every
+--      interface (lsof showed *:8099) while the docs claimed loopback-only.
 
 local editor = require("macroforge.editor")
 
-local function fakeHs()
+local function fakeHs(opts)
+  opts = opts or {}
   local calls = {
     newCounts = {},
     newFirstIsFunction = {},
     callbacks = {},
     ports = {},
+    interfaces = {},
     started = 0,
   }
   local hs = {}
@@ -24,6 +29,11 @@ local function fakeHs()
     calls.newFirstIsFunction[#calls.newFirstIsFunction + 1] =
       select("#", ...) > 0 and type((...)) == "function"
     local server = {}
+    if not opts.noSetInterface then
+      server.setInterface = function(_, iface)
+        calls.interfaces[#calls.interfaces + 1] = iface
+      end
+    end
     server.setCallback = function(_, fn) calls.callbacks[#calls.callbacks + 1] = fn end
     server.setPort = function(_, port) calls.ports[#calls.ports + 1] = port end
     server.start = function() calls.started = calls.started + 1 end
@@ -77,4 +87,49 @@ test("editor: a nil body from the router becomes an empty string", function()
   eq("", body)
   eq(204, status)
   eq({}, headers)
+end)
+
+
+test("editor: the server is pinned to loopback with setInterface", function()
+  local hs, calls = fakeHs()
+  local server = editor.start({ hs = hs, router = { route = function() end } })
+  truthy(server, "start should return the server")
+  eq({"loopback"}, calls.interfaces)
+  eq(1, calls.started)
+end)
+
+test("editor: the loopback binding happens before start, not after", function()
+  local hs, calls = fakeHs()
+  local order = {}
+  hs.httpserver.new = function(...)
+    local server = {}
+    server.setInterface = function() order[#order + 1] = "setInterface" end
+    server.setCallback = function() order[#order + 1] = "setCallback" end
+    server.setPort = function() order[#order + 1] = "setPort" end
+    server.start = function() order[#order + 1] = "start" end
+    return server
+  end
+  editor.start({ hs = hs, port = 8099, router = { route = function() end } })
+  -- hs.httpserver binds on start, so the interface must already be set by then.
+  local startAt
+  for i, step in ipairs(order) do
+    if step == "start" then startAt = i end
+  end
+  truthy(startAt, "start must be called")
+  truthy(startAt > 1, "something must precede start")
+  eq("setInterface", order[1])
+  for i = 2, startAt - 1 do
+    truthy(order[i] ~= "start", "nothing between setInterface and start")
+  end
+end)
+
+test("editor: start refuses to run without setInterface", function()
+  -- A server object that cannot be pinned to loopback would serve an API that
+  -- runs shell commands to the whole network, so start must fail loudly instead
+  -- of quietly starting on every interface.
+  local hs = fakeHs({ noSetInterface = true })
+  local ok, err = pcall(editor.start, { hs = hs, router = { route = function() end } })
+  falsy(ok, "start must fail when setInterface is missing")
+  truthy(type(err) == "string" and err:find("setInterface", 1, true),
+    "the error must name setInterface, got: " .. tostring(err))
 end)

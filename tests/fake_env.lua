@@ -94,8 +94,9 @@ function fake.new()
     callback(response.body, response.status >= 400 and ("HTTP " .. response.status) or nil)
   end
 
-  -- Installed by the engine in production; a no-op here keeps a bare action
-  -- call from crashing.
+  -- The default init.lua installs. The engine replaces it on the env of every
+  -- run it starts, so block tests must go through a real run; the no-op only
+  -- covers a bare action call with no run in flight.
   env.skipUntilEndIf = function() end
 
   function env:names()

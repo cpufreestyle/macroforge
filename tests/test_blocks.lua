@@ -11,9 +11,9 @@ local function marker(tag)
   return { type = "notify", parameters = { title = tag, text = tag } }
 end
 
--- The recorder hands out an env that mirrors what init.lua builds. The
--- skipUntilEndIf hook is wired to the engine under test in run(), because a
--- no-op here would silently disable every block assertion.
+-- The recorder hands out an env that mirrors what init.lua builds, including
+-- the no-op skipUntilEndIf default. run() installs the engine's real hook on
+-- it, because a no-op would silently disable every block assertion.
 local function recorder(overrides)
   local env = { calls = {} }
   env.notify = function(_, message) env.calls[#env.calls + 1] = tostring(message) end
@@ -39,9 +39,6 @@ local function run(actions_, env)
     error("test macro is invalid: " .. problems[1])
   end
   local eng = engine.new({ schedule = function(_, fn) fn() end, notify = function() end })
-  -- Install the engine's block hook exactly as init.lua does, so the if/endIf
-  -- actions move the counter of the run that is executing them.
-  env.skipUntilEndIf = function(take) eng.skipUntilEndIf(take) end
   local done, err = false, nil
   local started = eng:playMacro(doc, {
     env = env,
@@ -191,4 +188,3 @@ test("blocks: setVariable stores a value the next action can read", function()
   }, env)
   eq({ "hello" }, env.calls)
 end)
-

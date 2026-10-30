@@ -12,15 +12,55 @@ local conditions = require("macroforge.conditions")
 
 local BASE = "/macroforge"
 
+-- Loopback hosts. A request that names one of these in its Origin came from
+-- the editor itself, which is served from the same origin as the API.
+local LOOPBACK_HOSTS = {
+  ["127.0.0.1"] = true,
+  ["[::1]"] = true,
+  ["localhost"] = true,
+}
+
+-- Cross-site requests are refused by Origin, not by omitting CORS headers.
+-- Removing Access-Control-Allow-Origin only stops the *response* from being
+-- readable, which is not the problem: a "simple request" (POST or DELETE with
+-- a text/plain body) needs no preflight and no permission to read back, so any
+-- webpage could still make the user's browser run a runShell macro or delete
+-- and rewrite macro files. Browsers send Origin on same-origin non-GET
+-- requests too, so a real Origin that is not loopback is always someone else.
+local function originIsLoopback(origin)
+  if type(origin) ~= "string" or origin == "" then return true end
+  local scheme, host = origin:lower():match("^([a-z][a-z0-9+.-]*)://([^/]+)$")
+  if not scheme or not host then return false end
+  if scheme ~= "http" and scheme ~= "https" then return false end
+  -- Strip a :port. IPv6 literals arrive bracketed, so only cut at the last
+  -- colon when the remainder has no colon left.
+  if host:sub(1, 1) == "[" then
+    host = host:match("^%[.-%]") or host
+  else
+    host = host:match("^([^:]+)") or host
+  end
+  return LOOPBACK_HOSTS[host:lower()] == true
+end
+
+local function header(headers, name)
+  if type(headers) ~= "table" then return nil end
+  for k, v in pairs(headers) do
+    if type(k) == "string" and k:lower() == name then return v end
+  end
+  return nil
+end
+
 local function send(status, body, contentType)
   -- No Access-Control-Allow-Origin: the editor is same-origin with the API it
-  -- calls, so it never needs CORS. A wildcard here let any website POST
-  -- /api/run (a simple request, no preflight) and execute runShell macros, or
-  -- read/rewrite/delete every macro file, from the user's own browser.
+  -- calls, so it never needs CORS. A wildcard here would let any website read
+  -- the API's answers, and the Origin check below is what actually refuses the
+  -- request in the first place.
   return status, body, {
     ["Content-Type"] = contentType or "application/json",
   }
 end
+
+local FORBIDDEN = 403
 
 function router.new(opts)
   opts = opts or {}
@@ -33,10 +73,25 @@ function router.new(opts)
   }, router)
 end
 
-function router:route(method, path, body)
+-- route(method, path, body, headers)
+--   headers  the request headers as hs.httpserver passes them, so the Origin
+--            check below can see who is asking. Optional: a caller with no
+--            browser in the picture has nothing to check.
+function router:route(method, path, body, headers)
   method = (method or "GET"):upper()
   path = tostring(path or "/"):gsub("%?.+$", "")
   if #path > 1 and path:sub(-1) == "/" then path = path:sub(1, -2) end
+
+  -- Every path is refused here, not just the API ones: a top-level navigation
+  -- to the editor sends no Origin, so this costs the editor itself nothing,
+  -- while a fetch or subresource load from another site is turned away before
+  -- it can reach the store. Nothing below this line can run shell commands or
+  -- rewrite files on a cross-site request's behalf.
+  if not originIsLoopback(header(headers, "origin")) then
+    return send(FORBIDDEN, json.encode({
+      error = "refused: this API only accepts requests from the local editor",
+    }))
+  end
 
   if method == "OPTIONS" then
     return send(204, "")

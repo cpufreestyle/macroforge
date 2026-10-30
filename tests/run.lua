@@ -53,6 +53,7 @@ local files = {
   "test_vars",
   "test_conditions",
   "test_blocks",
+  "test_blocks_hook",
   "test_env_contract",
 }
 
