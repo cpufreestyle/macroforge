@@ -13,7 +13,7 @@ LUA=/opt/homebrew/bin/lua ./scripts/test.sh
 lua tests/run.lua          # direct
 ```
 
-Current result: **145 tests, 0 failures.** The runner prints one `ok` or `FAIL`
+Current result: **149 tests, 0 failures.** The runner prints one `ok` or `FAIL`
 line per test and exits non-zero on any failure, so it works as a CI gate.
 
 ## How the runner works
@@ -42,7 +42,7 @@ file is worse than an explicit list to maintain.
 | `test_blocks.lua` | 11 | if/else/endIf, nesting, skip and resume |
 | `test_actions.lua` | 11 | each action against the fake env |
 | `test_engine.lua` | 10 | ordering, failure policy, re-entry guard |
-| `test_ui.lua` | 9 | the page's markup, CSS and id wiring |
+| `test_ui.lua` | 12 | the page's markup, CSS, id wiring and teaching layer |
 | `test_store.lua` | 9 | load/save/delete through an in-memory `fs` |
 | `test_json.lua` | 8 | round trips, the NULL sentinel, number and string edges |
 | `test_vars.lua` | 7 | variable storage and `{{name}}` expansion |
@@ -103,7 +103,7 @@ reverted:
 | re-guard `setInterface` behind `if server.setInterface then` | 1 test fails |
 
 Each mutation produced failures, and restoring the code returned the suite to
-145 green. The tests observe real behaviour, not mocked outcomes.
+149 green. The tests observe real behaviour, not mocked outcomes.
 
 ## Adding a test
 
@@ -122,8 +122,16 @@ Each mutation produced failures, and restoring the code returned the suite to
   that a window actually moves, or that the editor page works in a real browser;
   those need a running Hammerspoon and a browser. Mutation testing plus the
   stub-DOM smoke test are the strongest offline evidence available.
-- `tests/editor_smoke.mjs` covers rendering, the window title, the mode switch
-  and the JSON-mode save path (it asserts that saving posts the edited object and
-  that a real id clash is still rejected). It does not exercise the form-to-JSON
-  conversion, deletion, or anything that needs a real browser and a real
-  Hammerspoon behind it.
+- `tests/editor_smoke.mjs` covers rendering, the window title, the mode switch,
+  the JSON-mode save path (it asserts that saving posts the edited object and
+  that a real id clash is still rejected) and the teaching layer: every
+  parameter label carries a `?` badge and a tip, hovering fills the shared
+  bubble, a native `title` is adopted into it, the quick start lists four steps
+  and can be dismissed, and the trigger card describes the current trigger. It
+  does not exercise the form-to-JSON conversion, deletion, or anything that
+  needs a real browser and a real Hammerspoon behind it.
+
+Bubble placement is the one part the stub cannot check: it has no layout, so a
+bubble that renders perfectly in the harness can still be positioned off-screen
+or under a scroll container in a browser. That is verified by hand, by hovering
+a label in a real browser and confirming the bubble lands inside the viewport.

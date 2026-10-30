@@ -95,6 +95,74 @@ test("ui: every trigger type in the catalog has a sidebar icon", function()
   truthy(html:find("mi%-icon", 1, false) ~= nil, "list rows should carry the mi-icon class")
 end)
 
+test("ui: every action and trigger has a Chinese name for the editor", function()
+  -- `label` stays English because the docs, console messages and tests use it
+  -- as a stable identifier. `zh` is what the editor shows, so a definition that
+  -- ships without one silently renders an English option in a Chinese UI.
+  --
+  -- This reads the source rather than the loaded table on purpose: other
+  -- suites call catalog.addAction("boom") to register a throwaway action, and
+  -- a third-party action legitimately has no zh (the editor falls back to its
+  -- label). Only the definitions shipped in the file are required to have one.
+  local fh = assert(io.open("macroforge/catalog.lua", "r"), "catalog.lua must exist")
+  local source = fh:read("*a")
+  fh:close()
+
+  local function count(pattern, text) return select(2, text:gsub(pattern, "")) end
+  local actions = source:match("catalog%.actions = {(.-)\ncatalog%.triggers = {")
+  local triggers = source:match("catalog%.triggers = {(.-)\ncatalog%.actionDef")
+  truthy(actions and #actions > 0, "could not locate the actions table in catalog.lua")
+  truthy(triggers and #triggers > 0, "could not locate the triggers table in catalog.lua")
+
+  for name, block in pairs({ actions = actions, triggers = triggers }) do
+    local defined = count('\n    type = "', block)
+    local named = count('\n    zh = "', block)
+    truthy(defined > 0, "no definitions found in the " .. name .. " table")
+    eq(defined, named, name .. " definitions without a zh name")
+    -- The paragraph under a card comes from zh_desc; without it the card shows
+    -- an English sentence in an otherwise Chinese form.
+    eq(defined, count('\n    zh_desc = "', block),
+      name .. " definitions without a Chinese description")
+  end
+end)
+
+test("ui: the editor prefers zh over label", function()
+  local html = readEditor()
+  truthy(html:find("def.zh || def.label", 1, true) ~= nil,
+    "actionLabel/triggerLabel should fall back to label when zh is absent")
+end)
+
+test("ui: the teaching layer ships one shared bubble", function()
+  local html = readEditor()
+  -- Exactly one bubble: two would either double up or fight over placement.
+  eq(1, select(2, html:gsub('id="tip"', "")), "#tip must appear exactly once")
+  truthy(html:find("#tip%s*{", 1, false) ~= nil, "#tip needs styling")
+  truthy(html:find("position%s*:%s*fixed", 1, false) ~= nil,
+    "the bubble must be fixed so a scroll container cannot clip it")
+  -- A bubble inside a field would be clipped by the sidebar.
+  truthy(html:find("function placeTip", 1, true) ~= nil, "placeTip() is missing")
+  truthy(html:find("function wireTips", 1, true) ~= nil, "wireTips() is missing")
+  truthy(html:find("wireTips%(%)", 1, false) ~= nil, "wireTips() must be called")
+
+  -- Flipping above the target is not sufficient: when the target has been
+  -- scrolled past the bottom edge, the flipped position is off-screen too.
+  -- placeTip() therefore needs a final clamp on the bottom edge.
+  truthy(html:find("viewH%s*%-%s*12%s*%-%s*height", 1, false) ~= nil,
+    "placeTip must clamp the bubble to the bottom edge after flipping")
+end)
+
+test("ui: tips are delegated so rebuilt action cards keep them", function()
+  local html = readEditor()
+  -- Action cards are rebuilt on every edit, so a per-node listener would go
+  -- stale the first time a card is added, moved or retyped.
+  for _, listener in ipairs({ "mouseover", "mouseout", "focusin", "focusout" }) do
+    truthy(html:find("document%.addEventListener%('" .. listener .. "'", 1, false) ~= nil,
+      "tips should delegate " .. listener .. " from document")
+  end
+  truthy(html:find("adoptTitles", 1, true) ~= nil,
+    "native title attributes should be adopted into the shared bubble")
+end)
+
 test("ui: every element id looked up from the script exists in the markup", function()
   local html = readEditor()
   local ids = jsLookupIds(html)

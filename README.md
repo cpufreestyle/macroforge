@@ -17,7 +17,8 @@ not an editor. Macroforge fills that gap:
 - a validated **JSON macro format**,
 - a **rule engine** that chains actions, handles failures and nesting,
 - **trigger wiring** (hot key, typed string, app launch, window focus, timer),
-- **palette chooser** and **local web editor** with an **Apple-style macOS UI**
+- **palette chooser** and **local web editor** with an **Apple-style macOS UI**,
+  inline field tips and a dismissible quick-start card
   (window chrome with traffic lights, light/dark materials),
 - a dependency-free **test suite** for all of the above.
 

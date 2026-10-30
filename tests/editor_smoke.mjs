@@ -197,6 +197,7 @@ function makeElement(tag) {
     });
   }
   el.setAttribute = (name, value) => { el.attributes[name] = String(value); };
+  el.removeAttribute = (name) => { delete el.attributes[name]; };
   el.getAttribute = (name) => (name in el.attributes ? el.attributes[name] : null);
   el.hasAttribute = (name) => name in el.attributes;
   el.addEventListener = (type, fn) => { (el.listeners[type] = el.listeners[type] || []).push(fn); };
@@ -210,6 +211,10 @@ function makeElement(tag) {
       for (const fn of node.listeners[type] || []) fn(fake);
       node = node.parentNode;
     }
+    // ...and finally to document, which is where the page delegates most of its
+    // handling (tips, dirty tracking, the trigger picker). Stopping at <body>
+    // would make every delegated listener look dead in this harness.
+    for (const fn of document.listeners[type] || []) fn(fake);
     return fake;
   };
   el.click = () => el.dispatch("click");
@@ -411,6 +416,65 @@ check("action cards expose a type picker",
 // The datalist is created at runtime, which is why the id looks absent from the
 // markup -- keep it working or the name field loses its suggestions.
 check("the datalist is created at runtime", !!byIdOf("macro-id-list"), "macro-id-list missing");
+
+// ------------------------------------------------------- teaching affordances
+// Every parameter renders with a ? badge and an explanatory tip. The tip is the
+// only thing that teaches a first-time user what "mods" or "into" means, so a
+// regression that drops it should fail here rather than in a browser.
+// The stub DOM's selector matcher understands classes, tags and attributes but
+// not descendant combinators, so ".field .lab" would look for one element
+// carrying both classes and match nothing.
+const paramLabels = byIdOf("actions").querySelectorAll(".lab");
+check("every rendered parameter labels itself with a ? badge",
+  paramLabels.length > 0 && paramLabels.every((l) => l.querySelector(".help")),
+  paramLabels.length + " labels, " + paramLabels.filter((l) => !l.querySelector(".help")).length + " without a badge");
+check("every ? badge is paired with a tip",
+  paramLabels.every((l) => (l.getAttribute("data-help") || "").length > 0),
+  paramLabels.filter((l) => !l.getAttribute("data-help")).map((l) => l.textContent).join(", "));
+check("the tip names the parameter's type",
+  paramLabels.some((l) => (l.getAttribute("data-help") || "").includes("必填")),
+  paramLabels.map((l) => l.getAttribute("data-help")).join(" | "));
+
+// Hovering shows the single page-wide bubble with that element's text.
+const tip = byIdOf("tip");
+const firstLabel = paramLabels.find((l) => l.getAttribute("data-help"));
+firstLabel.dispatch("mouseover", { target: firstLabel });
+check("hovering a label fills the shared tip bubble",
+  tip.className.includes("show") && tip.textContent === firstLabel.getAttribute("data-help"),
+  "class=" + JSON.stringify(tip.className) + " text=" + JSON.stringify(tip.textContent.slice(0, 60)));
+firstLabel.dispatch("mouseout", { target: firstLabel });
+check("leaving the label hides the tip", !tip.className.includes("show"), tip.className);
+
+// The toolbar ships native titles; the page must fold them into the same
+// bubble instead of leaving two tooltip systems on one screen.
+// This harness builds its elements from getElementById() rather than parsing
+// the markup, so the real button's title attribute does not exist here. Attach
+// one explicitly; the behaviour under test is what the page does with it.
+const saveButton = byIdOf("btn-save");
+saveButton.setAttribute("title", "写入 macros/<ID>.json");
+saveButton.dispatch("mouseover", { target: saveButton });
+check("a native title is adopted as a tip",
+  !saveButton.hasAttribute("title") && tip.className.includes("show")
+  && tip.textContent === "写入 macros/<ID>.json",
+  "title=" + saveButton.getAttribute("title") + " text=" + JSON.stringify(tip.textContent));
+saveButton.dispatch("mouseout", { target: saveButton });
+
+// The quick start is the only place that describes the order of operations.
+const quickstart = byIdOf("quickstart");
+check("the quick start lists the four steps",
+  quickstart.querySelectorAll("li").length === 4,
+  quickstart.querySelectorAll("li").length + " steps");
+const qsClose = quickstart.querySelector(".qs-close");
+check("the quick start can be dismissed", !!qsClose, "no .qs-close button");
+qsClose.click();
+check("dismissing the quick start empties it",
+  quickstart.children.length === 0 && quickstart.textContent === "",
+  JSON.stringify(quickstart.textContent || "").slice(0, 40));
+
+// The trigger card names the selected trigger even before opening the dropdown.
+check("the trigger card describes the current trigger",
+  (byIdOf("trigger-note").textContent || "").length > 0,
+  JSON.stringify(byIdOf("trigger-note").textContent));
 
 // Saving from JSON mode must take the textarea as the source of truth. The
 // macro object the page holds is detached from state.macros once JSON mode

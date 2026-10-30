@@ -37,8 +37,36 @@ Fifteen modules under `macroforge/`, 2832 lines total:
 Only `init.lua` knows Hammerspoon exists. Everything else is plain Lua, which is
 what lets the whole suite run under `lua` alone.
 
-`assets/editor.html` is 1839 lines of HTML, CSS and script with no framework and
+`assets/editor.html` is 2221 lines of HTML, CSS and script with no framework and
 no build step. It is served from the project root, not from `macroforge/`.
+
+### Editor teaching layer
+
+The form is the whole onboarding surface, because there is no separate tutorial
+and no wizard. Three pieces carry it:
+
+- **Field tips.** Every parameter label renders a `?` badge and a one-line
+  explanation built from the catalog: the parameter type, whether it is
+  required, its placeholder, and a note for well-known names (`app`, `mods`,
+  `into`, `command`, …). The tips are generated, so a new catalog entry cannot
+  ship without one.
+- **One shared bubble.** `#tip` is a single fixed-position node for the page.
+  A bubble nested inside a field would be clipped by the sidebar's and the
+  editor's scroll containers, which is where the labels sit. Native `title`
+  attributes are folded into the same bubble on first hover, so the page never
+  shows two competing tooltip systems.
+- **Quick start.** A four-step card above the first card explains the order to
+  do things in: pick a macro, pick a trigger, add actions, save then run. It is
+  dismissible and the dismissal is remembered in `localStorage` under
+  `macroforge.quickstart.dismissed`; a missing or throwing `localStorage`
+  (a `file://` page) is treated as "not dismissed" rather than fatal.
+
+Trigger and action definitions carry the vocabulary twice. `label` and
+`description` are the stable English text used by the docs, the console and the
+tests; `zh` and `zh_desc` are what the editor displays. A definition without the
+Chinese fields falls back to the English ones, so a user-added action stays
+readable instead of rendering blank — which is why the Chinese names are
+required of the shipped catalog but optional for third-party additions.
 
 ## Macro documents
 
