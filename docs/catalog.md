@@ -135,3 +135,8 @@ The `run` callback receives the environment bridge, the (already normalized)
 parameters, and a `done()` continuation you must call — that is what lets the
 engine support asynchronous actions such as `delay` and `playMacro`. Place the
 `register` call in an init-time hook after `require("macroforge").start()`.
+
+In the editor's action picker, built-in actions are grouped (应用 / 打开 / 文本 /
+窗口 / 脚本 / 流程 — the same sections this document uses). A custom action
+without a `group` field lands in the 其他 bucket at the end; set `group` on
+the `catalog.addAction` definition to place it in an existing group.

@@ -229,6 +229,33 @@ catalog.actions = {
   },
 }
 
+-- UI grouping for the editor's action type picker. Keys are the group names
+-- the picker shows; values are the action types in that group. catalog.md's
+-- sections mirror this mapping. Custom actions registered without a group
+-- fall back to the picker's 其他 bucket.
+local GROUPS = {
+  ["应用"] = { "launch", "activate", "quit" },
+  ["打开"] = { "openURL", "openFile" },
+  ["文本"] = { "typeText", "pasteText", "pressKeys", "setClipboard" },
+  ["窗口"] = { "snapWindow", "moveWindow" },
+  ["脚本"] = { "runShell", "runAppleScript", "notify", "delay" },
+  ["流程"] = { "if", "endIf", "setVariable", "httpRequest", "playMacro" },
+}
+do
+  local byType = {}
+  for _, def in ipairs(catalog.actions) do byType[def.type] = def end
+  -- Snapshot of the built-in vocabulary before runtime registration muddies
+  -- catalog.actions; the grouping tests pin coverage against this view.
+  catalog.builtinActionTypes = byType
+  for group, types in pairs(GROUPS) do
+    for _, t in ipairs(types) do
+      local def = byType[t]
+      if not def then error("catalog group references unknown action " .. t) end
+      def.group = group
+    end
+  end
+end
+
 catalog.triggers = {
   {
     type = "hotkey",

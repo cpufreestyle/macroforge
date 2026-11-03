@@ -40,6 +40,7 @@ end
 local files = {
   "test_json",
   "test_model",
+  "test_catalog",
   "test_store",
   "test_hsfs",
   "test_actions",

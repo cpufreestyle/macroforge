@@ -1652,6 +1652,22 @@
 
   function actionDefs() { return state.catalog.actions; }
 
+  // Grouped view of the action picker. Built-in defs carry a `group` field
+  // from catalog.lua; anything without one (custom actions) lands in the
+  // 其他 bucket at the end. Disabled header rows keep the picker renderable
+  // in the stub-DOM harness, which models select.value as a flat option list.
+  var ACTION_GROUP_ORDER = ['应用', '打开', '文本', '窗口', '脚本', '流程', '其他'];
+  function groupedActionDefs() {
+    var buckets = {};
+    actionDefs().forEach(function (def) {
+      var name = def.group || '其他';
+      (buckets[name] = buckets[name] || []).push(def);
+    });
+    return ACTION_GROUP_ORDER.map(function (name) {
+      return { name: name, defs: buckets[name] || [] };
+    }).filter(function (group) { return group.defs.length > 0; });
+  }
+
   function renderActions() {
     var host = $('actions');
     host.textContent = '';
@@ -1673,11 +1689,17 @@
       grip.className = 'grip';
       grip.textContent = '\u2261';
       var select = document.createElement('select');
-      actionDefs().forEach(function (optionDef) {
-        var option = document.createElement('option');
-        option.value = optionDef.type;
-        option.textContent = optionDef.zh || optionDef.label;
-        select.appendChild(option);
+      groupedActionDefs().forEach(function (group) {
+        var header = document.createElement('option');
+        header.disabled = true;
+        header.textContent = '── ' + group.name + ' ──';
+        select.appendChild(header);
+        group.defs.forEach(function (optionDef) {
+          var option = document.createElement('option');
+          option.value = optionDef.type;
+          option.textContent = optionDef.zh || optionDef.label;
+          select.appendChild(option);
+        });
       });
       select.value = step.type;
       select.dataset.scope = 'action-type';

@@ -115,7 +115,7 @@ Four `hs.httpserver` contract details that are easy to get wrong:
 ./scripts/test.sh        # lua 5.3+, default binary name lua (override with LUA=...)
 ```
 
-151 tests, 0 failures. The runner is `tests/run.lua`, the fake Hammerspoon
+153 tests, 0 failures. The runner is `tests/run.lua`, the fake Hammerspoon
 environment is `tests/fake_env.lua`, and the Node-based stub-DOM smoke test is
 `tests/editor_smoke.mjs` driven by `tests/test_editor_runtime.lua`. See
 [`HARNESS.md`](HARNESS.md) for the file-by-file inventory, the env-contract
