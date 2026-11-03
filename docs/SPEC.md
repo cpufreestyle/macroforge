@@ -2,8 +2,8 @@
 
 This document is the contract. It states what Macroforge promises, in enough
 detail that a change is either inside the contract or a deliberate change to it.
-`docs/catalog.md` lists the vocabulary; this file describes behaviour, invariants
-and limits.
+`docs/catalog.md` lists the vocabulary, `docs/macro-format.md` is the JSON
+schema quick reference; this file describes behaviour, invariants and limits.
 
 ## Scope
 
@@ -14,22 +14,22 @@ served on port 8099 and `http://127.0.0.1:8099/macroforge/` fails to connect.
 
 ## Modules and the dependency rule
 
-Fifteen modules under `macroforge/`, 2832 lines total:
+Fifteen modules under `macroforge/`, 2945 lines total:
 
 | module | lines | responsibility |
 | --- | --- | --- |
-| `init.lua` | 535 | the only module that touches Hammerspoon: adapters, lifecycle, logging |
-| `catalog.lua` | 289 | the vocabulary: action and trigger definitions |
+| `init.lua` | 549 | the only module that touches Hammerspoon: adapters, lifecycle, logging |
+| `catalog.lua` | 339 | the vocabulary: action and trigger definitions |
 | `json.lua` | 284 | JSON encode/decode with a NULL sentinel |
 | `model.lua` | 264 | normalization and validation of macro documents |
-| `actions.lua` | 240 | built-in action implementations |
-| `engine.lua` | 189 | execution: ordering, failure policy, re-entry guard |
+| `actions.lua` | 251 | built-in action implementations |
+| `engine.lua` | 210 | execution: ordering, failure policy, re-entry guard |
 | `router.lua` | 187 | the local HTTP API behind the editor |
 | `conditions.lua` | 169 | predicates behind `if` |
 | `store.lua` | 141 | macro persistence behind an injectable `fs` |
 | `triggers.lua` | 134 | hot key, typed string, app launch, focus, timer wiring |
 | `chooser.lua` | 124 | `hs.chooser` palettes |
-| `hsfs.lua` | 95 | filesystem adapter |
+| `hsfs.lua` | 112 | filesystem adapter, atomic writes |
 | `util.lua` | 62 | shared helpers |
 | `vars.lua` | 74 | the shared variable table and `{{name}}` expansion |
 | `editor.lua` | 45 | `hs.httpserver` wiring, pinned to loopback |

@@ -84,7 +84,7 @@ unknown position falls back to the whole screen instead of failing.
 | `if` | `condition` (required), `negate` (bool, default false) | Run the actions up to the matching `endIf` only when the condition holds. |
 | `endIf` | | Close an `if` block. Actions after it always run. |
 | `setVariable` | `name`, `value` (required) | Store a value under a name. Read it back with `{{name}}` in any text field. |
-| `httpRequest` | `url`, `method` (required), `body`, `into` | Call a URL and store the response body in the variable named by `into`. Asynchronous, so the Hammerspoon main loop stays free. |
+| `httpRequest` | `url`, `method` (required), `body`, `into` | Call a URL and store the response body in the variable named by `into`. Asynchronous, so the Hammerspoon main loop stays free. A failed request aborts the chain unless `continueOnError` is set, like any other failing action. |
 
 ## Triggers
 

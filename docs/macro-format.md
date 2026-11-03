@@ -3,6 +3,10 @@
 Each macro is one JSON file in `~/.hammerspoon/macroforge/macros/`. The file
 name is ignored (the `id` field is the key), so pick a readable one.
 
+Execution semantics, invariants and limits live in the behavioural contract,
+[`SPEC.md`](SPEC.md); [`catalog.md`](catalog.md) lists the action and trigger
+vocabulary this schema references.
+
 ## Schema
 
 ```jsonc
