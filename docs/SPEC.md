@@ -37,7 +37,7 @@ Fifteen modules under `macroforge/`, 2945 lines total:
 Only `init.lua` knows Hammerspoon exists. Everything else is plain Lua, which is
 what lets the whole suite run under `lua` alone.
 
-`assets/editor.html` is 2221 lines of HTML, CSS and script with no framework and
+`assets/editor.html` is 2229 lines of HTML, CSS and script with no framework and
 no build step. It is served from the project root, not from `macroforge/`.
 
 ### Editor teaching layer

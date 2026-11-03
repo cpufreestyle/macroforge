@@ -1208,6 +1208,19 @@
   // itself explains each field, but nothing said what order to do things in.
   var QUICKSTART_KEY = 'macroforge.quickstart.dismissed';
 
+  // All teaching copy in one labelled block, so the strings can be reviewed
+  // (or localized) in one place instead of inside the render code.
+  var TEACHING = {
+    close: '关闭入门提示',
+    title: '第一次用？四步就能跑起来',
+    steps: [
+      ['选一个宏', '，或点左下角「新建宏」。名称随便起，ID 决定文件名。'],
+      ['挑触发方式', '：手动、热键、键入字符串、应用启动、窗口聚焦或定时器。留空就是纯手动。'],
+      ['加动作', '：按从上到下的顺序执行。需要变量时，先「设置变量」，再用 {{名字}} 在任意文本框里读取。'],
+      ['存储再运行', '：⌘S 写入 JSON 文件，↩ 立刻试一次。改坏了点「重新载入」回到磁盘上的版本。']
+    ]
+  };
+
   function quickstartDismissed() {
     // localStorage throws in a file:// document and is missing entirely in the
     // Node stub DOM, so both are treated as "not dismissed" rather than fatal.
@@ -1239,15 +1252,10 @@
     var body = document.createElement('div');
     body.className = 'qs-body';
     var title = document.createElement('h4');
-    title.textContent = '第一次用？四步就能跑起来';
+    title.textContent = TEACHING.title;
     body.appendChild(title);
 
-    var steps = [
-      ['选一个宏', '，或点左下角「新建宏」。名称随便起，ID 决定文件名。'],
-      ['挑触发方式', '：手动、热键、键入字符串、应用启动、窗口聚焦或定时器。留空就是纯手动。'],
-      ['加动作', '：按从上到下的顺序执行。需要变量时，先「设置变量」，再用 {{名字}} 在任意文本框里读取。'],
-      ['存储再运行', '：⌘S 写入 JSON 文件，↩ 立刻试一次。改坏了点「重新载入」回到磁盘上的版本。']
-    ];
+    var steps = TEACHING.steps;
     var list = document.createElement('ol');
     steps.forEach(function (step) {
       var item = document.createElement('li');
@@ -1263,8 +1271,8 @@
     var close = document.createElement('button');
     close.type = 'button';
     close.className = 'qs-close';
-    close.setAttribute('aria-label', '关闭入门提示');
-    close.title = '关闭入门提示';
+    close.setAttribute('aria-label', TEACHING.close);
+    close.title = TEACHING.close;
     close.textContent = '\u2715';
     close.addEventListener('click', dismissQuickstart);
     box.appendChild(close);
