@@ -210,17 +210,28 @@ defs.endif = {
 }
 
 defs.httprequest = {
-  run = function(env, params, done)
+  run = function(env, params, done, playMacro, failAction)
     -- Asynchronous: the chain resumes from the callback, so a slow endpoint
-    -- never blocks the Hammerspoon main loop.
+    -- never blocks the Hammerspoon main loop. An async failure now honours
+    -- the macro's failure policy through the engine-provided failAction hook
+    -- (abort unless continueOnError) instead of continuing silently.
     env.httpRequest({
       url = params.url,
       method = params.method,
       body = params.body,
     }, function(body, err)
       if err then
-        env.notify("Macroforge", "HTTP request failed: " .. tostring(err))
-      elseif params.into and params.into ~= "" then
+        local reason = "HTTP request failed: " .. tostring(err)
+        if failAction then
+          failAction(reason)
+        else
+          -- Definition used without the engine hook: surface and continue.
+          env.notify("Macroforge", reason)
+          done()
+        end
+        return
+      end
+      if params.into and params.into ~= "" then
         env.setVariable(params.into, body)
       end
       done()

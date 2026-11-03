@@ -410,7 +410,13 @@ function Macroforge.start(opts)
   Macroforge.bindTriggers()
 
   state.watcher = hsInstance.pathwatcher.new(p.macrosDir, function()
-    Macroforge.reload()
+    -- Coalesce bursts of file events (batch saves, git operations) into one
+    -- reload instead of tearing down and rebuilding every trigger per event.
+    if state.reloadTimer then state.reloadTimer:stop() end
+    state.reloadTimer = hsInstance.timer.doAfter(0.3, function()
+      state.reloadTimer = nil
+      Macroforge.reload()
+    end)
   end):start()
 
   if not opts.noEditor then
@@ -425,6 +431,11 @@ end
 
 function Macroforge.reload()
   if not state then return false end
+  -- Stale re-entry guards belong to the previous macro generation; without
+  -- this cleanup a macro whose chain was interrupted could never run again
+  -- until a full Hammerspoon reload. Chains still in flight keep running on
+  -- their old macro tables (see engine:clearRunning).
+  if state.engine then state.engine:clearRunning() end
   local macros, errors = Macroforge.bindTriggers()
   if state.chooser then state.chooser:refresh() end
   local html = hsfs.readFile(state.paths.editorPath)
@@ -524,6 +535,9 @@ function Macroforge.stop()
   if not state then return end
   for _, handle in ipairs(state.handles) do handle.stop() end
   state.handles = {}
+  -- A pending debounce timer must not fire after stop() and reload against a
+  -- torn-down state.
+  if state.reloadTimer then state.reloadTimer:stop() end
   if state.watcher then state.watcher:stop() end
   if state.server then
     state.server:stop()

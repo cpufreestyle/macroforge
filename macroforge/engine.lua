@@ -91,6 +91,18 @@ function engine:playMacro(macro, callbacks)
     if callbacks.onError then callbacks.onError(reason) end
   end
 
+  -- Failure policy for asynchronous actions: an action that fails inside its
+  -- own callback cannot use the pcall path, so it signals through this hook.
+  -- It applies the same policy as the synchronous path: abort unless
+  -- continueOnError is set, with all guard bookkeeping inside the engine.
+  local function failAction(reason)
+    if macro.continueOnError then
+      self.schedule(0, step)
+    else
+      fail(reason)
+    end
+  end
+
   -- The actions call this through env; it mutates the local skipDepth, which
   -- is why the engine owns the block logic instead of the actions themselves.
   -- Re-entry is refused above, so the depth always starts at zero here and one
@@ -155,7 +167,7 @@ function engine:playMacro(macro, callbacks)
     self._active[depth + 1] = { skip = envSkip }
     local ok, err = pcall(def.run, callbacks.env, expandParams(action.parameters), function()
       self.schedule(0, step)
-    end, callbacks.playMacro)
+    end, callbacks.playMacro, failAction)
     while #self._active > depth do self._active[#self._active] = nil end
     if not ok then
       if macro.continueOnError then
@@ -180,6 +192,15 @@ end
 function engine:isRunning(macroOrId)
   local id = macroid(macroOrId)
   return not not self._running[id]
+end
+
+-- Clears every re-entry guard. reload() rebuilds the macro set, and guards
+-- belong to a generation: a stale guard left behind by an interrupted chain
+-- must not lock a macro out of running again. A chain still in flight from
+-- the previous generation keeps running on its old macro table; when it
+-- finishes it clears its own (already-replaced) key, which is harmless.
+function engine:clearRunning()
+  self._running = {}
 end
 
 function engine:runCount()

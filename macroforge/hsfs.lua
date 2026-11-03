@@ -66,14 +66,31 @@ function hsfs.readFile(path)
   return readFile(path)
 end
 
--- Drop-in replacement for the hs.fs.write call sites.
+-- Drop-in replacement for the hs.fs.write call sites. Writes are atomic: the
+-- content lands in a temporary file in the same directory and is renamed over
+-- the target, so a crash mid-write can never leave a truncated macro file
+-- behind (which store:load would then report as a problem file).
+local writeSeq = 0
 function hsfs.writeFile(hs, path, content)
+  writeSeq = writeSeq + 1
   local dir = path:match("^(.*)/[^/]*$")
   ensureDir(hs, dir)
-  local handle = io.open(path, "wb")
+  -- Unique per call so two rapid saves never interleave; same directory as
+  -- the target so the rename stays on one filesystem.
+  local tmp = path .. ".tmp-" .. tostring(os.time()) .. "-" .. tostring(writeSeq)
+  local handle = io.open(tmp, "wb")
   if not handle then return false end
-  handle:write(content)
+  local ok = pcall(handle.write, handle, content)
   handle:close()
+  if not ok then
+    pcall(os.remove, tmp)
+    return false
+  end
+  local renamed = os.rename(tmp, path)
+  if not renamed then
+    pcall(os.remove, tmp)
+    return false
+  end
   return true
 end
 

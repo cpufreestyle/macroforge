@@ -219,3 +219,24 @@ test("engine: an unresolvable string reference reports onError, not silence", fu
   eq(err, reason)
   eq(0, engine:runCount())
 end)
+
+-- reload() calls engine:clearRunning() when it rebuilds the macro set. Pin
+-- the hook: a guard set by an earlier run must not survive clearRunning, and
+-- the same macro must be startable again afterwards.
+test("engine: clearRunning releases the re-entry guard", function()
+  local pending = nil
+  local engine = engineMod.new({
+    notify = function() end,
+    schedule = function(_, fn) pending = fn end,
+  })
+  local env = fake.new()
+  local macro = simpleMacro("m10", { "delay", "notify" })
+  local ok1 = engine:playMacro(macro, { env = env, playMacro = function() end })
+  truthy(ok1, "first run should start")
+  truthy(engine:isRunning("m10"), "guard held while parked")
+  engine:clearRunning()
+  falsy(engine:isRunning("m10"), "guard released")
+  local ok2, reason2 = engine:playMacro(macro, { env = env, playMacro = function() end })
+  truthy(ok2, "re-run must start after clearRunning: " .. tostring(reason2))
+  eq(2, engine:runCount())
+end)

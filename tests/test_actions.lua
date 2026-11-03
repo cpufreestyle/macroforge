@@ -94,3 +94,31 @@ test("actions: custom actions can be registered", function()
   eq("notify", env.calls[1].name)
   eq("hello", env.calls[1].args[2])
 end)
+
+-- httprequest is asynchronous: its failure path goes through the
+-- engine-provided failAction hook instead of the pcall path. Pin the policy:
+-- an error aborts the chain by default, and continueOnError keeps it going.
+test("actions: httprequest failure honours the failure policy", function()
+  local engineMod = require("macroforge.engine")
+  local engine = engineMod.new({ notify = function() end })
+  local env = fake.new()
+  env.httpError = "connection refused"
+  local macro = {
+    id = "httpm", name = "httpm", enabled = true,
+    actions = {
+      { type = "httpRequest", parameters = { url = "https://example.com", method = "GET" } },
+      { type = "notify", parameters = { title = "t", text = "x" } },
+    },
+  }
+  engine:playMacro(macro, { env = env, playMacro = function() end })
+  eq({ "httpRequest" }, env:names())
+  falsy(engine:isRunning("httpm"), "chain aborted, guard released")
+  local env2 = fake.new()
+  env2.httpError = "connection refused"
+  local macro2 = {
+    id = "httpc", name = "httpc", enabled = true, continueOnError = true,
+    actions = { { type = "httpRequest", parameters = { url = "https://example.com", method = "GET" } }, { type = "notify", parameters = { title = "t", text = "x" } } },
+  }
+  engine:playMacro(macro2, { env = env2, playMacro = function() end })
+  eq({ "httpRequest", "notify" }, env2:names())
+end)
