@@ -25,6 +25,11 @@ fi
 echo "==> copying Macroforge into $DEST"
 mkdir -p "$DEST"
 for item in macroforge assets macros init.lua; do
+  if [ "$item" = "macros" ] && [ -d "$DEST/macros" ]; then
+    # The macros directory is user data: an existing install keeps it.
+    echo "    keeping the existing macros/ (your macros are preserved)"
+    continue
+  fi
   rm -rf "$DEST/$item"
   cp -R "$SRC/$item" "$DEST/$item"
 done
