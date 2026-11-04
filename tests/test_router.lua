@@ -223,20 +223,23 @@ end)
 -- 202, and the request text forwarded verbatim for the async round trip.
 test("router: ai/create is gated and asynchronous", function()
   local files = {}
-  local seen = nil
+  local seen, seenModel = nil, nil
   local router, counters = makeRouter(files, {})
   local status = router:route("POST", "/macroforge/api/ai/create", json.encode({ request = "提醒我喝水" }))
   eq(501, status, "without an aiCreate handler the endpoint must refuse")
-  local spy = function(request) seen = request end
+  local spy = function(request, model) seen = request; seenModel = model end
   local store = storeMod.new({ fs = memoryFs(files), macrosDir = "/macros" })
   local router2 = routerMod.new({
     store = store,
     editorHTML = "<html>editor</html>",
     aiCreate = spy,
   })
-  local status2, body2 = router2:route("POST", "/macroforge/api/ai/create", json.encode({ request = "提醒我喝水" }))
+  local status2, body2 = router2:route("POST", "/macroforge/api/ai/create", json.encode({ request = "提醒我喝水", model = "claude-haiku-5" }))
   eq(202, status2, "an injected handler gets an immediate acknowledgement")
   eq("提醒我喝水", seen)
+  eq("claude-haiku-5", seenModel, "an explicit model must reach the creator")
+  router2:route("POST", "/macroforge/api/ai/create", json.encode({ request = "再试一次" }))
+  eq(nil, seenModel, "a blank model must fall back to the settings default")
   local status3 = router2:route("POST", "/macroforge/api/ai/create", json.encode({ request = "  " }))
   eq(400, status3, "an empty request must be refused")
 end)

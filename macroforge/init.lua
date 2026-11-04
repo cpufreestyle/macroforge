@@ -420,8 +420,8 @@ local function makeAiCreator(env, store, notify)
     }, "\n")
   end
 
-  return function(request)
-    env.aiChat({ prompt = systemPrompt() .. "\n\n用户需求：" .. request }, function(reply, err)
+  return function(request, model)
+    env.aiChat({ prompt = systemPrompt() .. "\n\n用户需求：" .. request, model = model }, function(reply, err)
       if err then
         notify("Macroforge", "AI 生成失败：" .. tostring(err))
         return
@@ -439,12 +439,26 @@ local function makeAiCreator(env, store, notify)
         notify("Macroforge", "AI 生成未通过校验：" .. problems[1])
         return
       end
+      -- Safety rail: the model can misread a request and emit destructive
+      -- shell/AppleScript (seen live: an "rm -rf caches" macro for an
+      -- unrelated request). Such macros are created DISABLED -- a human must
+      -- read and enable them in the editor before they can ever run.
+      local hasShell = false
+      for _, a in ipairs(macro.actions or {}) do
+        local t = tostring(a.type or ""):lower()
+        if t == "runshell" or t == "runapplescript" then hasShell = true end
+      end
+      if hasShell then macro.enabled = false end
       local saved, saveErr = store:saveRenaming(macro)
       if not saved then
         notify("Macroforge", "保存失败：" .. tostring(saveErr))
         return
       end
-      notify("Macroforge", "AI 已创建宏「" .. tostring(macro.name or macro.id) .. "」")
+      local notice = "AI 已创建宏「" .. tostring(macro.name or macro.id) .. "」"
+      if hasShell then
+        notice = notice .. "（含 shell/AppleScript，已默认停用——请检查后再启用）"
+      end
+      notify("Macroforge", notice)
     end)
   end
 end

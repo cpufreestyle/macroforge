@@ -1010,6 +1010,7 @@
   <div class="ai-modal" role="dialog" aria-modal="true" aria-label="AI 新建宏">
     <h3>用一句话描述你想要的宏</h3>
     <textarea id="ai-request" rows="4" placeholder="例如：每天下午 3 点提醒我喝水，用系统通知"></textarea>
+    <input type="text" id="ai-model" placeholder="模型（留空用 settings 默认），如 claude-haiku-5 / group/never-stuck">
     <div class="ai-actions">
       <button type="button" id="ai-cancel" class="ghost">取消</button>
       <button type="button" id="ai-go" class="primary">生成宏</button>
@@ -2095,7 +2096,7 @@
     toast('AI 正在生成宏…');
     var known = {};
     state.macros.forEach(function (m) { known[m.id] = true; });
-    api('/api/ai/create', { method: 'POST', body: { request: text } }).then(function () {
+    api('/api/ai/create', { method: 'POST', body: { request: text, model: ($('ai-model').value.trim() || undefined) } }).then(function () {
       // The reply arrives as a new macro file; poll the list briefly for it.
       var tries = 0;
       var timer = setInterval(function () {

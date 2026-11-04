@@ -195,7 +195,11 @@ function router:route(method, path, body, headers)
     if request:match("^%s*(.-)%s*$") == "" then
       return send(400, json.encode({ error = "missing request text" }))
     end
-    self.aiCreate(request)
+    -- An optional per-creation model override; empty/whitespace means "use
+    -- the settings default".
+    local model = data and type(data.model) == "string" and data.model or nil
+    if model and model:match("^%s*(.-)%s*$") == "" then model = nil end
+    self.aiCreate(request, model)
     return send(202, json.encode({ started = true }))
   end
 
