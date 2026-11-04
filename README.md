@@ -35,22 +35,22 @@ about 2188 lines of Lua.
 
 1. Get Hammerspoon: `brew install --cask hammerspoon`, then grant Accessibility
    permission when it asks.
-2. Point Hammerspoon at this repo:
+2. From this repo, run the installer:
 
    ```sh
-   mv ~/Downloads/macroforge ~/.hammerspoon/macroforge   # or: git clone <this repo> ~/.hammerspoon/macroforge
+   sh scripts/install.sh
    ```
 
-3. Append the bootstrap to `~/.hammerspoon/init.lua`:
+   It copies Macroforge into `~/.hammerspoon/macroforge`, appends the
+   idempotent bootstrap to `~/.hammerspoon/init.lua`, and prints the two
+   manual steps that remain (grant Accessibility, Reload Config). Re-running
+   it later is safe: it updates an existing install in place.
 
-   ```lua
-   require("macroforge").start()
-   ```
-
-4. Reload Hammerspoon (menu bar icon -> Reload Config).
-
-The root `init.lua` is only a convenience wrapper: placing this folder inside
-`~/.hammerspoon/macroforge` is enough, because `start()` is idempotent.
+Manual install, if you prefer: clone or move this repo to
+`~/.hammerspoon/macroforge` and append `require("macroforge").start()` to
+`~/.hammerspoon/init.lua` yourself. The root `init.lua` is only a convenience
+wrapper: placing this folder inside `~/.hammerspoon/macroforge` is enough,
+because `start()` is idempotent.
 
 ## Quick start
 
@@ -72,6 +72,8 @@ The root `init.lua` is only a convenience wrapper: placing this folder inside
 Then:
 
 - Press **Ctrl+Cmd+Alt+H** — the macro runs.
+- The **menu-bar hammer** opens the palette and the editor without any
+  hotkeys; disable it with `"menubar": false` in settings.json.
 - `Macroforge.reload()` picks up hand-written files without restarting.
 - `Macroforge.showChooser()` — the palette; type to filter, Return to run.
 - `Macroforge.openEditor()` — web editor at `http://127.0.0.1:8099/macroforge/`.

@@ -77,6 +77,7 @@ refuses re-entry, which also protects a hot key you hold down.
 | key | default | effect |
 | --- | --- | --- |
 | `editorPort` | `8099` | Port of the local web editor. |
+| `menubar` | `true` | Menu-bar entry point (palette / editor / reload). Set `false` to hide it. |
 
 ## Failure policy
 

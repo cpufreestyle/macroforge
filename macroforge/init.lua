@@ -217,7 +217,16 @@ local function defaultSettings()
     editorHotkey  = { mods = { "cmd", "ctrl", "alt" }, key = "e" },
     reloadHotkey  = { mods = { "cmd", "ctrl", "alt" }, key = "r" },
     editorPort    = 8099,
+    menubar       = true,
   }
+end
+
+-- "cmd+ctrl+alt+m"-style display of a hotkey setting, for user-facing text.
+local function hotkeyText(conf)
+  if type(conf) ~= "table" or not conf.key then return "?" end
+  local mods = {}
+  for _, m in ipairs(conf.mods or {}) do mods[#mods + 1] = m end
+  return table.concat(mods, "+") .. "+" .. tostring(conf.key)
 end
 
 local function loadSettings(hsInstance)
@@ -277,7 +286,16 @@ local function bindSettingHotkey(hsInstance, setting, fn)
   if type(conf) ~= "table" or conf.key == false or not conf.key then return end
   local handle = hsInstance.hotkey.bind(conf.mods or {}, conf.key, fn)
   if not handle then
+    -- The console line is for debugging; the notification is what a user
+    -- actually sees, since "the hot key did nothing" is otherwise silent.
+    local labels = {
+      chooserHotkey = "打开面板",
+      editorHotkey = "打开编辑器",
+      reloadHotkey = "重新载入",
+    }
+    local label = labels[setting] or setting
     print(string.format("[Macroforge] could not bind %s (already taken?)", setting))
+    Macroforge.notify("Macroforge", "「" .. label .. "」快捷键绑定失败（可能被其他应用占用），可从菜单栏 ⚒ 进入。")
     return
   end
   state.handles[#state.handles + 1] = { stop = function() handle:delete() end }
@@ -423,6 +441,32 @@ function Macroforge.start(opts)
     Macroforge.startEditor()
   end
 
+  -- A permanent menu-bar entry point: no hotkeys to memorize, and the place
+  -- a new user looks first. Off via settings.menubar = false.
+  if state.settings.menubar ~= false then
+    state.menubar = hsInstance.menubar.new():setTitle("⚒"):setMenu({
+      { title = "打开面板", fn = function() Macroforge.showChooser() end },
+      { title = "打开编辑器", fn = function() Macroforge.openEditor() end },
+      { title = "-" },
+      { title = "重新载入宏", fn = function() Macroforge.reload() end },
+    })
+  end
+
+  -- First-run guidance: an empty macro dir means nothing is wired up yet, so
+  -- say what to do next instead of starting silently. Auto-opens the editor
+  -- (its teaching layer is already waiting there) once, tracked by a marker
+  -- file so it never nags on every reload.
+  if #state.store.macros == 0 then
+    Macroforge.notify("Macroforge", "还没有宏：" ..
+      hotkeyText(state.settings.chooserHotkey) .. " 打开面板，" ..
+      hotkeyText(state.settings.editorHotkey) .. " 或菜单栏 ⚒ 打开编辑器。")
+    local marker = p.root .. "/.onboarded"
+    if not hsfs.readFile(marker) then
+      hsfs.writeFile(hsInstance, marker, "1")
+      Macroforge.openEditor()
+    end
+  end
+
   local macros, errors = state.store.macros, state.errors
   print(string.format("[Macroforge] %s started: %d macros, %d problem file(s)",
     VERSION, #macros, #errors))
@@ -538,6 +582,7 @@ function Macroforge.stop()
   -- A pending debounce timer must not fire after stop() and reload against a
   -- torn-down state.
   if state.reloadTimer then state.reloadTimer:stop() end
+  if state.menubar then state.menubar:delete() end
   if state.watcher then state.watcher:stop() end
   if state.server then
     state.server:stop()
