@@ -2065,6 +2065,13 @@
       id: 'macro-' + serial,
       name: '宏 ' + serial,
       enabled: true,
+      // Instant feedback: a fresh macro already has a working typed trigger,
+      // so typing it anywhere fires the sample notify. Unique per serial to
+      // avoid two fresh macros sharing one trigger string.
+      trigger: {
+        type: 'typed',
+        parameters: { string: ';hi' + (serial > 1 ? serial : ''), delete: true }
+      },
       actions: [{
         type: 'notify',
         parameters: { title: 'Macroforge', text: 'Hello from Macroforge' }
@@ -2087,6 +2094,17 @@
       if (state.current) {
         var fresh = byId(state.current.id);
         if (fresh && !state.dirty) state.current = fresh;
+      }
+      // Deep link: /macroforge/?id=<id> jumps straight to that macro (for
+      // bookmarks and future entry points). Ignored when something is already
+      // selected, and when the harness stub DOM has no location.search.
+      if (!state.current && !state.selectedId) {
+        var wanted = null;
+        try { wanted = new URLSearchParams(window.location.search).get('id'); } catch (e) {}
+        if (wanted) {
+          var target = byId(wanted);
+          if (target) selectMacro(target.id);
+        }
       }
       ensureDatalist();
       ensureConditionList();
@@ -2229,7 +2247,9 @@
       var sorted = state.macros.slice().sort(function (a, b) {
         return esc(a.name).localeCompare(esc(b.name));
       });
-      if (sorted.length) {
+      // Auto-select the first macro alphabetically, but never overwrite a
+      // selection the ?id= deep link already made inside loadAll().
+      if (sorted.length && !state.current) {
         state.current = sorted[0];
         state.selectedId = sorted[0].id;
       }

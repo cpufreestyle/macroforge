@@ -1,0 +1,211 @@
+- generic [active] [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - generic: Snap window left half
+    - generic [ref=f2e7]: Macroforge
+    - group "编辑模式" [ref=f2e9]:
+      - button "表单" [pressed] [ref=f2e10]
+      - button "JSON" [ref=f2e11]
+    - button "重新载入" [ref=f2e12]
+    - button "运行" [ref=f2e13]
+    - button "删除" [ref=f2e14]
+    - button "存储" [ref=f2e15]
+  - generic [ref=f2e16]:
+    - complementary [ref=f2e17]:
+      - generic [ref=f2e18]:
+        - heading "宏" [level=2] [ref=f2e19]
+        - generic [ref=f2e20]: 7 / 7
+      - textbox "搜索宏" [ref=f2e22]:
+        - /placeholder: 搜索…
+      - list [ref=f2e23]:
+        - listitem [ref=f2e24]:
+          - generic "已停用" [ref=f2e25]
+          - generic [ref=f2e29]:
+            - generic [ref=f2e30]: Hourly stretch reminder
+            - generic [ref=f2e31]: 定时器 · 60 分钟
+          - button "▶" [ref=f2e32]
+        - listitem [ref=f2e33]:
+          - generic "已启用" [ref=f2e34]
+          - generic [ref=f2e37]:
+            - generic [ref=f2e38]: Open dev stack
+            - generic [ref=f2e39]: 热键 · cmd,ctrl,alt+d
+          - button "▶" [ref=f2e40]
+        - listitem [ref=f2e41]:
+          - generic "已启用" [ref=f2e42]
+          - generic [ref=f2e45]:
+            - generic [ref=f2e46]: Paste email signature
+            - generic [ref=f2e47]: 热键 · cmd,ctrl,alt+s
+          - button "▶" [ref=f2e48]
+        - listitem [ref=f2e49]:
+          - generic "已启用" [ref=f2e50]
+          - generic [ref=f2e53]:
+            - generic [ref=f2e54]: Post to Slack only when Safari is up
+            - generic [ref=f2e55]: 热键 · cmd,ctrl,alt+s
+          - button "▶" [ref=f2e56]
+        - listitem [ref=f2e57]:
+          - generic "已启用" [ref=f2e58]
+          - generic [ref=f2e61]:
+            - generic [ref=f2e62]: Snap window left half
+            - generic [ref=f2e63]: 热键 · cmd,ctrl,alt+left
+          - button "▶" [ref=f2e64]
+        - listitem [ref=f2e65]:
+          - generic "已启用" [ref=f2e66]
+          - generic [ref=f2e69]:
+            - generic [ref=f2e70]: Type timestamp at cursor
+            - generic [ref=f2e71]: 键入字符串 · ;now
+          - button "▶" [ref=f2e72]
+        - listitem [ref=f2e73]:
+          - generic "已启用" [ref=f2e74]
+          - generic [ref=f2e78]:
+            - generic [ref=f2e79]: Zoom launch reminder
+            - generic [ref=f2e80]: 应用启动 · zoom.us
+          - button "▶" [ref=f2e81]
+      - button "新建宏" [ref=f2e83]
+    - main [ref=f2e84]:
+      - generic [ref=f2e86]:
+        - note [ref=f2e88]:
+          - generic [ref=f2e89]: "?"
+          - generic [ref=f2e90]:
+            - heading "第一次用？四步就能跑起来" [level=4] [ref=f2e91]
+            - list [ref=f2e92]:
+              - listitem [ref=f2e93]:
+                - strong [ref=f2e94]: 选一个宏
+                - text: ，或点左下角「新建宏」。名称随便起，ID 决定文件名。
+              - listitem [ref=f2e95]:
+                - strong [ref=f2e96]: 挑触发方式
+                - text: ：手动、热键、键入字符串、应用启动、窗口聚焦或定时器。留空就是纯手动。
+              - listitem [ref=f2e97]:
+                - strong [ref=f2e98]: 加动作
+                - text: "：按从上到下的顺序执行。需要变量时，先「设置变量」，再用 {{名字}} 在任意文本框里读取。"
+              - listitem [ref=f2e99]:
+                - strong [ref=f2e100]: 存储再运行
+                - text: ：⌘S 写入 JSON 文件，↩ 立刻试一次。改坏了点「重新载入」回到磁盘上的版本。
+          - button "关闭入门提示" [ref=f2e101]: ✕
+        - generic [ref=f2e102]:
+          - heading "基本信息" [level=3] [ref=f2e103]
+          - generic [ref=f2e104]:
+            - generic [ref=f2e105]:
+              - generic [ref=f2e106]:
+                - text: 名称
+                - generic [aria-hidden] [ref=f2e107]: "?"
+              - textbox "名称" [ref=f2e108]:
+                - /placeholder: 例如：插入邮件签名…
+                - text: Snap window left half
+            - generic [ref=f2e109]:
+              - generic [ref=f2e110]:
+                - text: ID
+                - generic [aria-hidden] [ref=f2e111]: "?"
+              - textbox "ID 写入 macros/snap-left-half.json" [ref=f2e112]:
+                - /placeholder: email-signature
+                - text: snap-left-half
+              - generic [ref=f2e113]: 写入 macros/snap-left-half.json
+          - generic [ref=f2e114]:
+            - generic [ref=f2e115]:
+              - checkbox "启用" [checked] [ref=f2e116]
+              - generic [ref=f2e117]: 启用
+            - generic [ref=f2e118]:
+              - checkbox "出错时继续执行" [ref=f2e119]
+              - generic [ref=f2e120]: 出错时继续执行
+        - generic [ref=f2e121]:
+          - heading "触发方式" [level=3] [ref=f2e122]
+          - paragraph [ref=f2e123]: 按下组合键就运行。若组合冲突，Hammerspoon 会静默让位，请看它的控制台。
+          - generic [ref=f2e125]:
+            - generic [ref=f2e126]: 触发器类型
+            - combobox "触发器类型" [ref=f2e127]:
+              - option "手动（只从菜单或编辑器运行）"
+              - option "热键（Hot key）" [selected]
+              - option "键入字符串（Typed string）"
+              - option "应用启动（App launches）"
+              - option "窗口聚焦（Window focused）"
+              - option "定时器（Timer）"
+          - generic [ref=f2e128]:
+            - generic [ref=f2e129]:
+              - generic [ref=f2e130]:
+                - text: mods
+                - generic [aria-hidden] [ref=f2e131]: "?"
+              - generic [ref=f2e132]:
+                - generic [ref=f2e133]:
+                  - checkbox "mods ⌘ Cmd ⌃ Ctrl ⌥ Option ⇧ Shift Fn" [checked]
+                  - generic [ref=f2e134]: ⌘ Cmd
+                - generic [ref=f2e135]:
+                  - checkbox "⌃ Ctrl" [checked]
+                  - generic [ref=f2e136]: ⌃ Ctrl
+                - generic [ref=f2e137]:
+                  - checkbox "⌥ Option" [checked]
+                  - generic [ref=f2e138]: ⌥ Option
+                - generic [ref=f2e139]:
+                  - checkbox "⇧ Shift"
+                  - generic [ref=f2e140]: ⇧ Shift
+                - generic [ref=f2e141]:
+                  - checkbox "Fn"
+                  - generic [ref=f2e142]: Fn
+            - generic [ref=f2e143]:
+              - generic [ref=f2e144]:
+                - text: key
+                - generic [aria-hidden] [ref=f2e145]: "?"
+              - textbox "key" [ref=f2e146]:
+                - /placeholder: k
+                - text: left
+        - generic [ref=f2e147]:
+          - heading "动作" [level=3] [ref=f2e148]
+          - paragraph [ref=f2e149]: 按从上到下的顺序执行。↑ ↓ 调整顺序，⎘ 复制一步，✕ 删除一步。
+          - generic [ref=f2e151]:
+            - generic [ref=f2e152]:
+              - generic [ref=f2e153]: ≡
+              - combobox [ref=f2e154]:
+                - option "── 应用 ──" [disabled]
+                - option "启动或聚焦应用"
+                - option "切换到应用"
+                - option "退出应用"
+                - option "── 打开 ──" [disabled]
+                - option "打开网址"
+                - option "打开文件或文件夹"
+                - option "── 文本 ──" [disabled]
+                - option "键入文字"
+                - option "粘贴文字"
+                - option "按键组合"
+                - option "设置剪贴板"
+                - option "── 窗口 ──" [disabled]
+                - option "吸附窗口" [selected]
+                - option "移动并缩放窗口"
+                - option "── 脚本 ──" [disabled]
+                - option "运行 Shell 脚本"
+                - option "运行 AppleScript"
+                - option "显示通知"
+                - option "延迟"
+                - option "── 流程 ──" [disabled]
+                - option "运行另一个宏"
+                - option "条件判断"
+                - option "设置变量"
+                - option "结束条件"
+                - option "HTTP 请求"
+              - generic [ref=f2e155]:
+                - button "↑" [disabled] [ref=f2e156]
+                - button "↓" [disabled] [ref=f2e157]
+                - button "⎘" [ref=f2e158]
+                - button "✕" [ref=f2e159]
+            - generic [ref=f2e160]:
+              - generic [ref=f2e161]:
+                - generic [ref=f2e162]:
+                  - text: position
+                  - generic [aria-hidden] [ref=f2e163]: "?"
+                - combobox "position" [ref=f2e164]:
+                  - option "left" [selected]
+                  - option "right"
+                  - option "top"
+                  - option "bottom"
+                  - option "max"
+                  - option "fill"
+                  - option "center"
+              - generic [ref=f2e165]:
+                - generic [ref=f2e166]:
+                  - text: app
+                  - generic [aria-hidden] [ref=f2e167]: "?"
+                - textbox "app" [ref=f2e168]:
+                  - /placeholder: "optional: app to activate first"
+            - paragraph [ref=f2e169]: 把当前窗口移到屏幕的某个区域。
+          - button "+ 添加动作" [ref=f2e170]
+  - status "宏编辑器状态" [ref=f2e171]:
+    - generic [ref=f2e172]: 7 个宏
+  - paragraph [ref=f2e173]: 删除会移除该宏的 JSON 文件，且无法撤销。
+  - status
+  - tooltip [aria-hidden]
