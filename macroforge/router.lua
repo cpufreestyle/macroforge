@@ -70,6 +70,7 @@ function router.new(opts)
     editorHTML = opts.editorHTML,
     reload = opts.reload or function() return true end,
     run = opts.run,
+    aiCreate = opts.aiCreate,
   }, router)
 end
 
@@ -179,6 +180,23 @@ function router:route(method, path, body, headers)
     end
     local started, reason = self.run(macro)
     return send(200, json.encode({ started = not not started, reason = reason }))
+  end
+
+  -- AI macro creation is asynchronous by design: the model round trip takes
+  -- seconds, so the endpoint acknowledges immediately (202) and the result
+  -- arrives as a new macro file -- the pathwatcher reloads, the editor list
+  -- refreshes, and a notification reports success or failure.
+  if method == "POST" and path == BASE .. "/api/ai/create" then
+    if not self.aiCreate then
+      return send(501, json.encode({ error = "AI macro creation is not configured" }))
+    end
+    local data = json.decode(body or "")
+    local request = data and type(data.request) == "string" and data.request or ""
+    if request:match("^%s*(.-)%s*$") == "" then
+      return send(400, json.encode({ error = "missing request text" }))
+    end
+    self.aiCreate(request)
+    return send(202, json.encode({ started = true }))
   end
 
   return send(404, json.encode({ error = "not found: " .. method .. " " .. path }))

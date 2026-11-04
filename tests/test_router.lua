@@ -218,3 +218,25 @@ test("router: responses never send a wildcard CORS origin", function()
   local _, _, listHeaders = router:route("GET", "/macroforge/api/macros", "")
   eq(nil, listHeaders["Access-Control-Allow-Origin"])
 end)
+
+-- AI macro creation: gated behind the injected handler, acknowledged with
+-- 202, and the request text forwarded verbatim for the async round trip.
+test("router: ai/create is gated and asynchronous", function()
+  local files = {}
+  local seen = nil
+  local router, counters = makeRouter(files, {})
+  local status = router:route("POST", "/macroforge/api/ai/create", json.encode({ request = "提醒我喝水" }))
+  eq(501, status, "without an aiCreate handler the endpoint must refuse")
+  local spy = function(request) seen = request end
+  local store = storeMod.new({ fs = memoryFs(files), macrosDir = "/macros" })
+  local router2 = routerMod.new({
+    store = store,
+    editorHTML = "<html>editor</html>",
+    aiCreate = spy,
+  })
+  local status2, body2 = router2:route("POST", "/macroforge/api/ai/create", json.encode({ request = "提醒我喝水" }))
+  eq(202, status2, "an injected handler gets an immediate acknowledgement")
+  eq("提醒我喝水", seen)
+  local status3 = router2:route("POST", "/macroforge/api/ai/create", json.encode({ request = "  " }))
+  eq(400, status3, "an empty request must be refused")
+end)

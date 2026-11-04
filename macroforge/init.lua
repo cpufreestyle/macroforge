@@ -388,6 +388,67 @@ function Macroforge.bindTriggers()
   return macros, state.errors
 end
 
+-- The AI macro author: turns a plain-language request into a validated macro
+-- file. The catalog vocabulary is serialized into the prompt so the model can
+-- only reach for actions that actually exist, and its output goes through the
+-- same normalize/validate/save path as a hand-written file before touching
+-- disk. Asynchronous: the reply lands as a new macro file plus a notification.
+local function makeAiCreator(env, store, notify)
+  local function vocabulary()
+    local lines = {}
+    for _, def in ipairs(catalog.actions) do
+      local params = {}
+      for _, p in ipairs(def.params or {}) do
+        params[#params + 1] = p.name .. "(" .. p.type
+          .. (p.required and ",required" or "") .. ")"
+      end
+      lines[#lines + 1] = def.type .. ": " .. table.concat(params, " ")
+    end
+    return table.concat(lines, "\n")
+  end
+
+  local function systemPrompt()
+    return table.concat({
+      "你是 macOS 自动化工具 Macroforge 的宏生成器。根据用户需求只输出一个 JSON 宏文档，不要输出解释或代码围栏。",
+      "规则：顶层字段 id（小写字母数字连字符）、name（简短中文名）、enabled=true、actions 数组（至少一个动作）。",
+      "可用动作：",
+      vocabulary(),
+      "触发器类型：hotkey(key,mods)、typed(string,delete)、appLaunch(app)、windowFocused(app)、interval(minutes)。无需自动触发就省略 trigger 字段。",
+      "文本参数可用 {{变量名}} 引用之前 setVariable 存入的值；ai 动作把回复存进 into 指定的变量。",
+      "输出形状示例（每个动作必须是 {\"type\": 动作名, \"parameters\": {参数名: 值}}，参数不许平铺在动作上）：",
+      '{"id":"afternoon-water","name":"下午喝水提醒","enabled":true,"trigger":{"type":"interval","parameters":{"minutes":1440}},"actions":[{"type":"setVariable","parameters":{"name":"hour","value":"15"}},{"type":"notify","parameters":{"title":"喝水提醒","text":"现在是 {{hour}} 点，记得喝水。"}}]}',
+    }, "\n")
+  end
+
+  return function(request)
+    env.aiChat({ prompt = systemPrompt() .. "\n\n用户需求：" .. request }, function(reply, err)
+      if err then
+        notify("Macroforge", "AI 生成失败：" .. tostring(err))
+        return
+      end
+      -- Strip a code fence if the model added one despite the instruction.
+      local body = reply:match("^%s*```%w*%s*(.-)%s*```%s*$") or reply
+      local data = json.decode(body or "")
+      if type(data) ~= "table" then
+        notify("Macroforge", "AI 生成失败：输出不是合法 JSON")
+        return
+      end
+      local macro = model.normalize(data)
+      local problems = model.validate(macro)
+      if #problems > 0 then
+        notify("Macroforge", "AI 生成未通过校验：" .. problems[1])
+        return
+      end
+      local saved, saveErr = store:saveRenaming(macro)
+      if not saved then
+        notify("Macroforge", "保存失败：" .. tostring(saveErr))
+        return
+      end
+      notify("Macroforge", "AI 已创建宏「" .. tostring(macro.name or macro.id) .. "」")
+    end)
+  end
+end
+
 function Macroforge.startEditor()
   if not state then return nil end
   local hsInstance = state.hs
@@ -402,6 +463,7 @@ function Macroforge.startEditor()
     editorHTML = html,
     reload = function() return Macroforge.reload() end,
     run = function(macro) return Macroforge.playMacro(macro) end,
+    aiCreate = makeAiCreator(state.env, state.store, Macroforge.notify),
   })
   state.server = editorMod.start({
     hs = hsInstance,

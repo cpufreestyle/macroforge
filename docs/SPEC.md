@@ -14,17 +14,17 @@ served on port 8099 and `http://127.0.0.1:8099/macroforge/` fails to connect.
 
 ## Modules and the dependency rule
 
-Fifteen modules under `macroforge/`, 3103 lines total:
+Fifteen modules under `macroforge/`, 3183 lines total:
 
 | module | lines | responsibility |
 | --- | --- | --- |
-| `init.lua` | 641 | the only module that touches Hammerspoon: adapters, lifecycle, logging |
+| `init.lua` | 703 | the only module that touches Hammerspoon: adapters, lifecycle, logging |
 | `catalog.lua` | 379 | the vocabulary: action and trigger definitions, picker grouping |
 | `json.lua` | 284 | JSON encode/decode with a NULL sentinel |
 | `model.lua` | 264 | normalization and validation of macro documents |
 | `actions.lua` | 277 | built-in action implementations |
 | `engine.lua` | 210 | execution: ordering, failure policy, re-entry guard |
-| `router.lua` | 187 | the local HTTP API behind the editor |
+| `router.lua` | 205 | the local HTTP API behind the editor |
 | `conditions.lua` | 169 | predicates behind `if` |
 | `store.lua` | 141 | macro persistence behind an injectable `fs` |
 | `triggers.lua` | 134 | hot key, typed string, app launch, focus, timer wiring |
@@ -127,6 +127,7 @@ machines on the network.
 | DELETE | `/macroforge/api/macros/{id}` | delete one macro |
 | POST | `/macroforge/api/reload` | re-read macros from disk |
 | POST | `/macroforge/api/run` | run a macro |
+| POST | `/macroforge/api/ai/create` | create a macro from a plain-language request (async: 202 now, the macro file appears when the model replies; validated like a hand-written file) |
 
 ### Origin policy
 

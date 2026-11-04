@@ -928,6 +928,7 @@
     </div>
     <ul class="macro-list" id="macro-list"></ul>
     <div class="sidebar-foot">
+      <button type="button" id="btn-ai-new" class="ghost">AI 新建宏</button>
       <button type="button" id="btn-new">新建宏</button>
     </div>
   </aside>
@@ -997,6 +998,24 @@
 </footer>
 
 <p class="sr-only" id="delete-warning">删除会移除该宏的 JSON 文件，且无法撤销。</p>
+
+<style>
+  #ai-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  #ai-overlay[hidden] { display: none; }
+  .ai-modal { background: #fff; border-radius: 12px; padding: 16px; width: min(480px, 90%); display: grid; gap: 10px; }
+  .ai-modal textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+  .ai-actions { display: flex; justify-content: flex-end; gap: 8px; }
+</style>
+<div id="ai-overlay" hidden>
+  <div class="ai-modal" role="dialog" aria-modal="true" aria-label="AI 新建宏">
+    <h3>用一句话描述你想要的宏</h3>
+    <textarea id="ai-request" rows="4" placeholder="例如：每天下午 3 点提醒我喝水，用系统通知"></textarea>
+    <div class="ai-actions">
+      <button type="button" id="ai-cancel" class="ghost">取消</button>
+      <button type="button" id="ai-go" class="primary">生成宏</button>
+    </div>
+  </div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="tip" role="tooltip" aria-hidden="true"></div>
 
@@ -2055,6 +2074,50 @@
     });
   }
 
+  // ------------------------------------------------------------- AI creation
+  // One sentence in, a validated macro file out. The heavy lifting (vocabulary
+  // prompt, normalize/validate/save) happens server-side in init.lua; here we
+  // collect the request and wait for the new macro file to appear.
+  function openAiModal() {
+    $('ai-overlay').hidden = false;
+    $('ai-request').value = '';
+    $('ai-request').focus();
+  }
+
+  function closeAiModal() {
+    $('ai-overlay').hidden = true;
+  }
+
+  function aiSubmit() {
+    var text = $('ai-request').value.trim();
+    if (!text) return;
+    closeAiModal();
+    toast('AI 正在生成宏…');
+    var known = {};
+    state.macros.forEach(function (m) { known[m.id] = true; });
+    api('/api/ai/create', { method: 'POST', body: { request: text } }).then(function () {
+      // The reply arrives as a new macro file; poll the list briefly for it.
+      var tries = 0;
+      var timer = setInterval(function () {
+        tries += 1;
+        loadAll().then(function () {
+          var fresh = null;
+          state.macros.forEach(function (m) { if (!known[m.id]) fresh = m; });
+          if (fresh) {
+            clearInterval(timer);
+            toast('AI 已创建宏「' + (fresh.name || fresh.id) + '」');
+            selectMacro(fresh.id);
+          } else if (tries > 10) {
+            clearInterval(timer);
+            toast('AI 生成未完成——请看系统通知里的失败原因', 'error');
+          }
+        });
+      }, 1500);
+    }).catch(function (err) {
+      toast('AI 生成失败：' + err.message, 'error');
+    });
+  }
+
   function newMacro() {
     if (state.dirty && !confirm('放弃未存储的修改？')) return;
     var used = {};
@@ -2203,6 +2266,9 @@
     $('btn-save').addEventListener('click', function () { save(); });
     $('btn-delete').addEventListener('click', removeMacro);
     $('btn-new').addEventListener('click', newMacro);
+    $('btn-ai-new').addEventListener('click', openAiModal);
+    $('ai-cancel').addEventListener('click', closeAiModal);
+    $('ai-go').addEventListener('click', aiSubmit);
     $('btn-add-action').addEventListener('click', addAction);
     $('btn-reload').addEventListener('click', reloadAll);
     $('btn-run').addEventListener('click', function () {

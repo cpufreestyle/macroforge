@@ -1,0 +1,44 @@
+{
+  "actions": [
+    {
+      "parameters": {
+        "script": "set currentDate to current date\nset dow to weekday of currentDate as integer\nset currentHour to hours of currentDate\nif dow is greater than 1 and dow is less than 7 and currentHour is equal to 15 then\n\treturn \"yes\"\nelse\n\treturn \"no\"\nend if"
+      },
+      "type": "runAppleScript"
+    },
+    {
+      "parameters": {
+        "name": "shouldNotify",
+        "value": "yes"
+      },
+      "type": "setVariable"
+    },
+    {
+      "parameters": {
+        "condition": "{{shouldNotify}} == yes",
+        "negate": false
+      },
+      "type": "if"
+    },
+    {
+      "parameters": {
+        "text": "下午 3 点到了，起来喝杯水，活动一下吧！",
+        "title": "💧 喝水提醒"
+      },
+      "type": "notify"
+    },
+    {
+      "parameters": [],
+      "type": "endIf"
+    }
+  ],
+  "enabled": true,
+  "id": "workday-water-reminder",
+  "name": "工作日下午喝水提醒",
+  "trigger": {
+    "parameters": {
+      "minutes": 1440
+    },
+    "type": "interval"
+  }
+}
