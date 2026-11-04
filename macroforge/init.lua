@@ -195,16 +195,54 @@ local function buildEnv(hsInstance, notify)
         callback(body, err)
       end)
     end
-    hsInstance.http.asyncRequest({
-      url = vars.expand(opts.url or "", vars.get),
-      method = opts.method or "GET",
-      payload = opts.body and vars.expand(opts.body, vars.get) or nil,
-    }, function(status, body)
+    hsInstance.http.doAsyncRequest(opts.url, opts.method or "GET",
+      opts.body and vars.expand(opts.body, vars.get) or nil, nil, function(status, body)
       if status < 200 or status >= 300 then
         finish(body, "HTTP " .. tostring(status))
         return
       end
       finish(body, nil)
+    end)
+  end
+
+  -- Chat with the OpenAI-compatible endpoint configured in settings.json
+  -- (ai.endpoint / ai.model / ai.apiKey). The key is composed only here, so
+  -- it never appears in a macro file. callback(replyText, err).
+  env.aiChat = function(opts, callback)
+    local ai = env.ai or {}
+    if type(ai.endpoint) ~= "string" or ai.endpoint == "" then
+      callback(nil, "settings.json 未配置 ai.endpoint")
+      return
+    end
+    local json = require("macroforge.json")
+    local messages = {}
+    if opts.system and opts.system ~= "" then
+      messages[#messages + 1] = { role = "system", content = opts.system }
+    end
+    messages[#messages + 1] = { role = "user", content = opts.prompt or "" }
+    local headers = { ["Content-Type"] = "application/json" }
+    if type(ai.apiKey) == "string" and ai.apiKey ~= "" then
+      headers.Authorization = "Bearer " .. ai.apiKey
+    end
+    hsInstance.http.doAsyncRequest(ai.endpoint, "POST", json.encode({
+      model = (opts.model and opts.model ~= "") and opts.model or ai.model,
+      messages = messages,
+    }), headers, function(status, body)
+      hsInstance.timer.doAfter(0, function()
+        if status < 200 or status >= 300 then
+          callback(nil, "HTTP " .. tostring(status) .. ": "
+            .. tostring(body and body:sub(1, 200) or ""))
+          return
+        end
+        local data = json.decode(body or "")
+        local reply = data and data.choices and data.choices[1]
+          and data.choices[1].message and data.choices[1].message.content
+        if type(reply) ~= "string" then
+          callback(nil, "AI 响应格式异常")
+          return
+        end
+        callback(reply, nil)
+      end)
     end)
   end
 
@@ -218,6 +256,7 @@ local function defaultSettings()
     reloadHotkey  = { mods = { "cmd", "ctrl", "alt" }, key = "r" },
     editorPort    = 8099,
     menubar       = true,
+    ai            = { endpoint = "", model = "", apiKey = "" },
   }
 end
 
@@ -387,7 +426,12 @@ function Macroforge.start(opts)
   hsInstance.fs.mkdir(p.macrosDir)
 
   local notify = function(title, text)
-    hsInstance.notify.new({ title = title, informativeText = text }):send()
+    -- tostring guards the validation in hs.notify: a table slipping in here
+    -- would otherwise crash the timer callback instead of showing the text.
+    hsInstance.notify.new({
+      title = tostring(title),
+      informativeText = tostring(text),
+    }):send()
   end
 
   local env = buildEnv(hsInstance, notify)
@@ -424,6 +468,9 @@ function Macroforge.start(opts)
     errors = {},
     play = play,
   }
+
+  -- Hand the AI settings to the env bridge; aiChat reads them per call.
+  env.ai = state.settings.ai
 
   Macroforge.bindTriggers()
 

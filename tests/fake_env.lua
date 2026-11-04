@@ -94,6 +94,23 @@ function fake.new()
     callback(response.body, response.status >= 400 and ("HTTP " .. response.status) or nil)
   end
 
+  -- A recorded AI chat call. env.aiReplyText / env.aiChatError let tests
+  -- choose the outcome without a network, mirroring env.httpResponse.
+  -- env.ai mirrors the settings table the production bridge reads per call.
+  env.ai = {}
+  env.aiCalls = {}
+  env.aiReplyText = "模拟回复"
+  env.aiChatError = nil
+  env.aiChat = function(opts, callback)
+    env.aiCalls[#env.aiCalls + 1] = opts
+    record("aiChat", opts.prompt)
+    if env.aiChatError then
+      callback(nil, env.aiChatError)
+      return
+    end
+    callback(env.aiReplyText, nil)
+  end
+
   -- The default init.lua installs. The engine replaces it on the env of every
   -- run it starts, so block tests must go through a real run; the no-op only
   -- covers a bare action call with no run in flight.
@@ -113,6 +130,9 @@ function fake.new()
     self.probeFacts = {}
     self.httpResponse = { status = 200, body = "ok" }
     self.httpError = nil
+    self.aiCalls = {}
+    self.aiReplyText = "模拟回复"
+    self.aiChatError = nil
   end
 
   return env

@@ -7,3 +7,4 @@ out/
 .v2c/
 .video_agent/
 .playwright-mcp/
+settings.json

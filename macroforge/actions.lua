@@ -239,6 +239,32 @@ defs.httprequest = {
   end,
 }
 
+defs.ai = {
+  run = function(env, params, done, playMacro, failAction)
+    -- Asynchronous like httprequest: the reply arrives in the callback and
+    -- lands in a variable (params.into, default aiReply) that any later
+    -- action can read via {{...}}. Failures honour the failure policy.
+    env.aiChat({
+      prompt = params.prompt,
+      system = params.system,
+      model = params.model,
+    }, function(reply, err)
+      if err then
+        local reason = "AI 调用失败: " .. tostring(err)
+        if failAction then
+          failAction(reason)
+        else
+          env.notify("Macroforge", reason)
+          done()
+        end
+        return
+      end
+      env.setVariable(params.into and params.into ~= "" and params.into or "aiReply", reply)
+      done()
+    end)
+  end,
+}
+
 function actions.definition(actionType)
   return defs[tostring(actionType or ""):lower()]
 end

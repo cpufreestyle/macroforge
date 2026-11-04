@@ -78,6 +78,9 @@ refuses re-entry, which also protects a hot key you hold down.
 | --- | --- | --- |
 | `editorPort` | `8099` | Port of the local web editor. |
 | `menubar` | `true` | Menu-bar entry point (palette / editor / reload). Set `false` to hide it. |
+| `ai.endpoint` | *(empty)* | Full URL of an OpenAI-compatible chat endpoint, e.g. a local AI gateway's `/v1/chat/completions`. Empty disables the `ai` action. |
+| `ai.model` | *(empty)* | Default model id the `ai` action sends; overridable per action. |
+| `ai.apiKey` | *(empty)* | Sent as `Authorization: Bearer …`; leave empty for local gateways. settings.json is git-ignored — keep keys here, not in macro files. |
 
 ## Failure policy
 

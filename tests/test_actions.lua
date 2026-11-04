@@ -122,3 +122,39 @@ test("actions: httprequest failure honours the failure policy", function()
   engine:playMacro(macro2, { env = env2, playMacro = function() end })
   eq({ "httpRequest", "notify" }, env2:names())
 end)
+
+-- ai routes through the env bridge: config errors and endpoint failures
+-- honour the failure policy, success lands in a variable for later actions.
+test("actions: ai stores the reply in a variable", function()
+  local engineMod = require("macroforge.engine")
+  local engine = engineMod.new({ notify = function() end })
+  local env = fake.new()
+  env.aiReplyText = "Hello!"
+  local macro = {
+    id = "aim", name = "aim", enabled = true,
+    actions = {
+      { type = "ai", parameters = { prompt = "say hi", into = "reply" } },
+      { type = "notify", parameters = { title = "t", text = "{{reply}}" } },
+    },
+  }
+  engine:playMacro(macro, { env = env, playMacro = function() end })
+  eq("Hello!", env.variables.reply)
+  eq({ "aiChat", "setVariable", "notify" }, env:names())
+end)
+
+test("actions: ai failures honour the failure policy", function()
+  local engineMod = require("macroforge.engine")
+  local engine = engineMod.new({ notify = function() end })
+  local env = fake.new()
+  env.aiChatError = "settings.json 未配置 ai.endpoint"
+  local macro = {
+    id = "aie", name = "aie", enabled = true,
+    actions = {
+      { type = "ai", parameters = { prompt = "hi" } },
+      { type = "notify", parameters = { title = "t", text = "x" } },
+    },
+  }
+  engine:playMacro(macro, { env = env, playMacro = function() end })
+  eq({ "aiChat" }, env:names())
+  falsy(engine:isRunning("aie"), "guard released")
+end)

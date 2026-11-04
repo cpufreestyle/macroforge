@@ -227,6 +227,19 @@ catalog.actions = {
       { name = "into", type = "string", placeholder = "httpBody" },
     },
   },
+  {
+    type = "ai",
+    label = "AI completion",
+    zh = "AI 问答",
+    description = "Ask the AI endpoint configured in settings.json and store the reply in a variable for later actions.",
+    zh_desc = "把提示词发给 settings.json 里配置的 AI 端点，回复存进变量，后续动作可用 {{变量}} 读取。",
+    params = {
+      { name = "prompt", type = "text", required = true, placeholder = "把下面的内容翻译成英文：{{text}}" },
+      { name = "into", type = "string", default = "aiReply", placeholder = "aiReply" },
+      { name = "system", type = "text", placeholder = "You are a concise translator." },
+      { name = "model", type = "string", placeholder = "可选：临时覆盖 settings 里的模型" },
+    },
+  },
 }
 
 -- UI grouping for the editor's action type picker. Keys are the group names
@@ -239,7 +252,7 @@ local GROUPS = {
   ["文本"] = { "typeText", "pasteText", "pressKeys", "setClipboard" },
   ["窗口"] = { "snapWindow", "moveWindow" },
   ["脚本"] = { "runShell", "runAppleScript", "notify", "delay" },
-  ["流程"] = { "if", "endIf", "setVariable", "httpRequest", "playMacro" },
+  ["流程"] = { "if", "endIf", "setVariable", "httpRequest", "playMacro", "ai" },
 }
 do
   local byType = {}

@@ -14,15 +14,15 @@ served on port 8099 and `http://127.0.0.1:8099/macroforge/` fails to connect.
 
 ## Modules and the dependency rule
 
-Fifteen modules under `macroforge/`, 3611 lines total:
+Fifteen modules under `macroforge/`, 3103 lines total:
 
 | module | lines | responsibility |
 | --- | --- | --- |
-| `init.lua` | 594 | the only module that touches Hammerspoon: adapters, lifecycle, logging |
-| `catalog.lua` | 366 | the vocabulary: action and trigger definitions, picker grouping |
+| `init.lua` | 641 | the only module that touches Hammerspoon: adapters, lifecycle, logging |
+| `catalog.lua` | 379 | the vocabulary: action and trigger definitions, picker grouping |
 | `json.lua` | 284 | JSON encode/decode with a NULL sentinel |
 | `model.lua` | 264 | normalization and validation of macro documents |
-| `actions.lua` | 251 | built-in action implementations |
+| `actions.lua` | 277 | built-in action implementations |
 | `engine.lua` | 210 | execution: ordering, failure policy, re-entry guard |
 | `router.lua` | 187 | the local HTTP API behind the editor |
 | `conditions.lua` | 169 | predicates behind `if` |

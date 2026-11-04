@@ -37,5 +37,5 @@ test("catalog: no group in the picker order is empty", function()
   for _, name in ipairs(ORDER) do
     truthy((byGroup[name] or 0) > 0, "group " .. name .. " has no actions")
   end
-  eq(total, 20, "the built-in vocabulary is 20 actions")
+  eq(total, 21, "the built-in vocabulary is 21 actions")
 end)

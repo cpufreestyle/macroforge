@@ -85,6 +85,7 @@ unknown position falls back to the whole screen instead of failing.
 | `endIf` | | Close an `if` block. Actions after it always run. |
 | `setVariable` | `name`, `value` (required) | Store a value under a name. Read it back with `{{name}}` in any text field. |
 | `httpRequest` | `url`, `method` (required), `body`, `into` | Call a URL and store the response body in the variable named by `into`. Asynchronous, so the Hammerspoon main loop stays free. A failed request aborts the chain unless `continueOnError` is set, like any other failing action. |
+| `ai` | `prompt` (required), `into` (default `aiReply`), `system`, `model` | Send the prompt (with `{{variables}}` already expanded) to the OpenAI-compatible endpoint configured under `ai` in settings.json, and store the reply text in the variable named by `into`. Asynchronous; failures honour the failure policy. The API key lives in settings.json only, never in a macro file. |
 
 ## Triggers
 
