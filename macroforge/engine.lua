@@ -120,12 +120,23 @@ function engine:playMacro(macro, callbacks)
 
   -- Text parameters are expanded here rather than in each action, so every
   -- string field supports {{name}} without the action knowing about variables.
+  -- {{clipboard}} is a built-in: it reads the pasteboard at expansion time, so
+  -- any action (an ai prompt, a notify, a snippet) can consume what the user
+  -- just copied without a setVariable round trip.
   local getVariable = callbacks.env and callbacks.env.getVariable
+  local function resolve(name)
+    local value = getVariable and getVariable(name)
+    if value == nil and name == "clipboard"
+      and callbacks.env and callbacks.env.getClipboard then
+      value = callbacks.env.getClipboard()
+    end
+    return value
+  end
   local function expandParams(params)
     if not getVariable then return params end
     local out = {}
     for k, v in pairs(params or {}) do
-      out[k] = type(v) == "string" and vars.expand(v, getVariable) or v
+      out[k] = type(v) == "string" and vars.expand(v, resolve) or v
     end
     return out
   end

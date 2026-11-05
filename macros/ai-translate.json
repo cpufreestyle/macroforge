@@ -1,11 +1,10 @@
 {
   "id": "ai-translate",
-  "name": "AI 翻译",
+  "name": "AI 翻译剪贴板",
   "enabled": true,
   "trigger": { "type": "hotkey", "parameters": { "mods": "cmd,ctrl,alt", "key": "t" } },
   "actions": [
-    { "type": "setVariable", "parameters": { "name": "text", "value": "今天天气不错，适合出去走走。" } },
-    { "type": "ai", "parameters": { "prompt": "把下面的句子翻译成英文，只输出译文：{{text}}", "into": "english" } },
+    { "type": "ai", "parameters": { "prompt": "把下面的内容翻译成英文，只输出译文；若已是英文则翻译成中文：{{clipboard}}", "into": "english" } },
     { "type": "notify", "parameters": { "title": "AI 翻译", "text": "{{english}}" } }
   ]
 }
