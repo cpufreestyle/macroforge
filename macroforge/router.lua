@@ -197,10 +197,13 @@ function router:route(method, path, body, headers)
       return send(400, json.encode({ error = "missing request text" }))
     end
     -- An optional per-creation model override; empty/whitespace means "use
-    -- the settings default".
+    -- the settings default". An optional id turns the request into an EDIT
+    -- of that existing macro instead of a fresh creation.
     local model = data and type(data.model) == "string" and data.model or nil
     if model and model:match("^%s*(.-)%s*$") == "" then model = nil end
-    self.aiCreate(request, model)
+    local editId = data and type(data.id) == "string" and data.id or nil
+    if editId and editId:match("^%s*(.-)%s*$") == "" then editId = nil end
+    self.aiCreate(request, model, editId)
     return send(202, json.encode({ started = true }))
   end
 

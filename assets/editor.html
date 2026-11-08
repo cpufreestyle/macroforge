@@ -1010,6 +1010,7 @@
   <div class="ai-modal" role="dialog" aria-modal="true" aria-label="AI 新建宏">
     <h3>用一句话描述你想要的宏</h3>
     <textarea id="ai-request" rows="4" placeholder="例如：每天下午 3 点提醒我喝水，用系统通知"></textarea>
+    <label class="ai-edit-row" id="ai-edit-row" hidden><input type="checkbox" id="ai-edit"> <span id="ai-edit-label">修改当前宏</span></label>
     <input type="text" id="ai-model" list="ai-model-options" placeholder="模型（留空用 settings 默认），如 claude-haiku-5 / group/never-stuck">
     <datalist id="ai-model-options"></datalist>
     <div class="ai-actions">
@@ -2084,6 +2085,16 @@
     $('ai-overlay').hidden = false;
     $('ai-request').value = '';
     $('ai-request').focus();
+    // With a macro selected the request can target it for editing instead of
+    // creating a fresh one.
+    var editRow = $('ai-edit-row');
+    if (state.current) {
+      editRow.hidden = false;
+      $('ai-edit').checked = false;
+      $('ai-edit-label').textContent = '修改当前宏（' + (state.current.name || state.current.id) + '）';
+    } else {
+      editRow.hidden = true;
+    }
     // Fetch the gateway's model list once for the dropdown suggestions; the
     // input stays free-text if discovery fails.
     if (!state.aiModels) {
@@ -2107,16 +2118,29 @@
   function aiSubmit() {
     var text = $('ai-request').value.trim();
     if (!text) return;
+    var editTarget = ($('ai-edit').checked && state.current) ? state.current.id : undefined;
     closeAiModal();
-    toast('AI 正在生成宏…');
+    toast(editTarget ? 'AI 正在修改宏…' : 'AI 正在生成宏…');
     var known = {};
     state.macros.forEach(function (m) { known[m.id] = true; });
-    api('/api/ai/create', { method: 'POST', body: { request: text, model: ($('ai-model').value.trim() || undefined) } }).then(function () {
-      // The reply arrives as a new macro file; poll the list briefly for it.
+    api('/api/ai/create', { method: 'POST', body: { request: text, model: ($('ai-model').value.trim() || undefined), id: editTarget } }).then(function () {
       var tries = 0;
+      var beforeName = (editTarget && byId(editTarget)) ? byId(editTarget).name : null;
       var timer = setInterval(function () {
         tries += 1;
         loadAll().then(function () {
+          if (editTarget) {
+            // An edit lands in place: the name changing is the visible signal,
+            // and the polling window closing is the fallback -- the system
+            // notification carries the authoritative result either way.
+            var m = byId(editTarget);
+            if (tries > 10 || (m && m.name !== beforeName)) {
+              clearInterval(timer);
+              selectMacro(editTarget);
+              toast('AI 修改完成——请检查结果（详见系统通知）');
+            }
+            return;
+          }
           var fresh = null;
           state.macros.forEach(function (m) { if (!known[m.id]) fresh = m; });
           if (fresh) {

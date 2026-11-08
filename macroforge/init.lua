@@ -441,8 +441,33 @@ local function makeAiCreator(env, store, notify)
 
   -- NOTE: the override parameter is deliberately named modelOverride -- a
   -- plain `model` would shadow the macroforge.model module used below.
-  return function(request, modelOverride)
-    env.aiChat({ prompt = systemPrompt() .. "\n\n用户需求：" .. request, model = modelOverride }, function(reply, err)
+  local function hasShellAction(actions)
+    for _, a in ipairs(actions or {}) do
+      local t = tostring(a.type or ""):lower()
+      if t == "runshell" or t == "runapplescript" then return true end
+    end
+    return false
+  end
+
+  return function(request, modelOverride, editId)
+    local original = nil
+    if editId then
+      original = store:byId(editId)
+      if not original then
+        notify("Macroforge", "AI 修改失败：找不到宏 " .. tostring(editId))
+        return
+      end
+    end
+    local prompt
+    if original then
+      prompt = systemPrompt()
+        .. "\n\n你会收到一个现有宏的 JSON 文档和修改要求。输出修改后的完整宏 JSON：保持 id 字段不变、不要输出解释或围栏。\n\n现有宏：\n"
+        .. json.encode(original)
+        .. "\n\n修改要求：" .. request
+    else
+      prompt = systemPrompt() .. "\n\n用户需求：" .. request
+    end
+    env.aiChat({ prompt = prompt, model = modelOverride }, function(reply, err)
       if err then
         notify("Macroforge", "AI 生成失败：" .. tostring(err))
         return
@@ -461,39 +486,45 @@ local function makeAiCreator(env, store, notify)
         return
       end
       local macro = model.normalize(data)
-      -- A colliding id would shadow the user's macro at load time (two files,
-      -- one id -- which one wins depends on load order; verified live).
-      -- Suffix the id until it is free and say so in the notification.
+      -- Edits keep the file identity stable; fresh creations must not shadow
+      -- a user macro whose id they collide with (two files, one id -- which
+      -- one wins at runtime depends on load order; verified live).
       local renamed = false
-      if store:byId(macro.id) then
+      if original then
+        macro.id = editId
+      elseif store:byId(macro.id) then
         macro.id = util.uniqueId(macro.id, function(x) return store:byId(x) ~= nil end)
         renamed = true
       end
       local problems = model.validate(macro)
       if #problems > 0 then
-        notify("Macroforge", "AI 生成未通过校验：" .. problems[1])
+        notify("Macroforge", (original and "AI 修改未通过校验：" or "AI 生成未通过校验：") .. problems[1])
         return
       end
       -- Safety rail: the model can misread a request and emit destructive
       -- shell/AppleScript (seen live: an "rm -rf caches" macro for an
-      -- unrelated request). Such macros are created DISABLED -- a human must
-      -- read and enable them in the editor before they can ever run.
-      local hasShell = false
-      for _, a in ipairs(macro.actions or {}) do
-        local t = tostring(a.type or ""):lower()
-        if t == "runshell" or t == "runapplescript" then hasShell = true end
+      -- unrelated request). Fresh macros with shell, and edits that INTRODUCE
+      -- shell where there was none, are created DISABLED -- a human must read
+      -- and enable them in the editor before they can ever run.
+      local hasShell = hasShellAction(macro.actions)
+      if hasShell and not (original and hasShellAction(original.actions)) then
+        macro.enabled = false
       end
-      if hasShell then macro.enabled = false end
-      local saved, saveErr = store:saveRenaming(macro)
+      local saved, saveErr = store:saveRenaming(macro, original and editId or nil)
       if not saved then
         notify("Macroforge", "保存失败：" .. tostring(saveErr))
         return
       end
-      local notice = "AI 已创建宏「" .. tostring(macro.name or macro.id) .. "」"
-      if renamed then
-        notice = notice .. "（id 与现有宏冲突，已改为 " .. macro.id .. "）"
+      local notice
+      if original then
+        notice = "AI 已修改宏「" .. tostring(macro.name or macro.id) .. "」"
+      else
+        notice = "AI 已创建宏「" .. tostring(macro.name or macro.id) .. "」"
+        if renamed then
+          notice = notice .. "（id 与现有宏冲突，已改为 " .. macro.id .. "）"
+        end
       end
-      if hasShell then
+      if hasShell and macro.enabled == false then
         notice = notice .. "（含 shell/AppleScript，已默认停用——请检查后再启用）"
       end
       notify("Macroforge", notice)
