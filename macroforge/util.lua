@@ -59,4 +59,37 @@ function util.shellQuote(s)
   return "'" .. tostring(s or ""):gsub("'", "'\\''") .. "'"
 end
 
+-- Danger patterns for AI-generated macro content, checked case-insensitively.
+-- A misread request once produced an "rm -rf caches" macro for an unrelated
+-- ask; content matching any of these is refused at generation time instead of
+-- merely being created disabled.
+local DANGEROUS_COMMANDS = {
+  "rm%s*%-rf",
+  "empty%s+trash",
+  "sudo%s+dd",
+  "mkfs",
+  "diskutil%s+erase",
+}
+
+-- Returns the first matching danger pattern, or nil when clean.
+function util.dangerousCommand(text)
+  local haystack = tostring(text or ""):lower()
+  for _, pattern in ipairs(DANGEROUS_COMMANDS) do
+    if haystack:find(pattern) then return pattern end
+  end
+  return nil
+end
+
+-- Returns id, or id suffixed with "-ai" until exists(candidate) is false.
+-- Used when an AI-generated macro would otherwise shadow a user macro that
+-- shares the id: two files with one id make runtime behaviour depend on load
+-- order (verified live).
+function util.uniqueId(id, exists)
+  local candidate = tostring(id or "")
+  while exists(candidate) do
+    candidate = candidate .. "-ai"
+  end
+  return candidate
+end
+
 return util

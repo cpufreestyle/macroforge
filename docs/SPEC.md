@@ -14,30 +14,30 @@ served on port 8099 and `http://127.0.0.1:8099/macroforge/` fails to connect.
 
 ## Modules and the dependency rule
 
-Fifteen modules under `macroforge/`, 3234 lines total:
+Fifteen modules under `macroforge/`:
 
-| module | lines | responsibility |
-| --- | --- | --- |
-| `init.lua` | 739 | the only module that touches Hammerspoon: adapters, lifecycle, logging |
-| `catalog.lua` | 379 | the vocabulary: action and trigger definitions, picker grouping |
-| `json.lua` | 284 | JSON encode/decode with a NULL sentinel |
-| `model.lua` | 264 | normalization and validation of macro documents |
-| `actions.lua` | 277 | built-in action implementations |
-| `engine.lua` | 210 | execution: ordering, failure policy, re-entry guard |
-| `router.lua` | 205 | the local HTTP API behind the editor |
-| `conditions.lua` | 169 | predicates behind `if` |
-| `store.lua` | 141 | macro persistence behind an injectable `fs` |
-| `triggers.lua` | 134 | hot key, typed string, app launch, focus, timer wiring |
-| `chooser.lua` | 124 | `hs.chooser` palettes |
-| `hsfs.lua` | 112 | filesystem adapter, atomic writes |
-| `util.lua` | 62 | shared helpers |
-| `vars.lua` | 74 | the shared variable table and `{{name}}` expansion |
-| `editor.lua` | 45 | `hs.httpserver` wiring, pinned to loopback |
+| module | responsibility |
+| --- | --- |
+| `init.lua` | the only module that touches Hammerspoon: adapters, lifecycle, logging |
+| `catalog.lua` | the vocabulary: action and trigger definitions, picker grouping |
+| `json.lua` | JSON encode/decode with a NULL sentinel |
+| `model.lua` | normalization and validation of macro documents |
+| `actions.lua` | built-in action implementations |
+| `engine.lua` | execution: ordering, failure policy, re-entry guard |
+| `router.lua` | the local HTTP API behind the editor |
+| `conditions.lua` | predicates behind `if` |
+| `store.lua` | macro persistence behind an injectable `fs` |
+| `triggers.lua` | hot key, typed string, app launch, focus, timer wiring |
+| `chooser.lua` | `hs.chooser` palettes |
+| `hsfs.lua` | filesystem adapter, atomic writes |
+| `util.lua` | shared helpers, AI-content danger gate |
+| `vars.lua` | the shared variable table and `{{name}}` expansion |
+| `editor.lua` | `hs.httpserver` wiring, pinned to loopback |
 
 Only `init.lua` knows Hammerspoon exists. Everything else is plain Lua, which is
 what lets the whole suite run under `lua` alone.
 
-`assets/editor.html` is 2229 lines of HTML, CSS and script with no framework and
+`assets/editor.html` is a single file of HTML, CSS and script with no framework and
 no build step. It is served from the project root, not from `macroforge/`.
 
 ### Editor teaching layer

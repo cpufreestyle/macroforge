@@ -23,7 +23,7 @@ not an editor. Macroforge fills that gap:
 - a dependency-free **test suite** for all of the above.
 
 Everything you add is plain text in a git repo you own, and the whole thing is
-about 2188 lines of Lua.
+about 3200 lines of Lua.
 
 ## Requirements
 
@@ -159,6 +159,8 @@ switch. The Node part skips itself when Node is absent.
 
 ## Status
 
-v0.1.0 — engine, triggers, chooser and editor work and are covered by tests.
+v0.1.1 — engine, triggers, chooser and editor work and are covered by tests;
+AI features (ai action, macro generation by description) call any
+OpenAI-compatible endpoint configured in settings.json.
 Remaining Keyboard Maestro parity items (file triggers, USB-device triggers,
 conflict palette, macro groups) are tracked in `docs/architecture.md`.

@@ -12,7 +12,7 @@
 
 local Macroforge = {}
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.1"
 
 local json       = require("macroforge.json")
 local util       = require("macroforge.util")
@@ -439,20 +439,36 @@ local function makeAiCreator(env, store, notify)
     }, "\n")
   end
 
-  return function(request, model)
-    env.aiChat({ prompt = systemPrompt() .. "\n\n用户需求：" .. request, model = model }, function(reply, err)
+  -- NOTE: the override parameter is deliberately named modelOverride -- a
+  -- plain `model` would shadow the macroforge.model module used below.
+  return function(request, modelOverride)
+    env.aiChat({ prompt = systemPrompt() .. "\n\n用户需求：" .. request, model = modelOverride }, function(reply, err)
       if err then
         notify("Macroforge", "AI 生成失败：" .. tostring(err))
         return
       end
       -- Strip a code fence if the model added one despite the instruction.
       local body = reply:match("^%s*```%w*%s*(.-)%s*```%s*$") or reply
+      -- Danger gate: refuse destructive content before it can touch disk.
+      local danger = util.dangerousCommand(body)
+      if danger then
+        notify("Macroforge", "AI 生成被拒绝：内容包含危险命令（" .. danger .. "）")
+        return
+      end
       local data = json.decode(body or "")
       if type(data) ~= "table" then
         notify("Macroforge", "AI 生成失败：输出不是合法 JSON")
         return
       end
       local macro = model.normalize(data)
+      -- A colliding id would shadow the user's macro at load time (two files,
+      -- one id -- which one wins depends on load order; verified live).
+      -- Suffix the id until it is free and say so in the notification.
+      local renamed = false
+      if store:byId(macro.id) then
+        macro.id = util.uniqueId(macro.id, function(x) return store:byId(x) ~= nil end)
+        renamed = true
+      end
       local problems = model.validate(macro)
       if #problems > 0 then
         notify("Macroforge", "AI 生成未通过校验：" .. problems[1])
@@ -474,6 +490,9 @@ local function makeAiCreator(env, store, notify)
         return
       end
       local notice = "AI 已创建宏「" .. tostring(macro.name or macro.id) .. "」"
+      if renamed then
+        notice = notice .. "（id 与现有宏冲突，已改为 " .. macro.id .. "）"
+      end
       if hasShell then
         notice = notice .. "（含 shell/AppleScript，已默认停用——请检查后再启用）"
       end
