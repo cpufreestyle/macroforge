@@ -188,13 +188,19 @@ local function buildEnv(hsInstance, notify)
   env.httpRequest = function(opts, callback)
     -- hs.http is async, which is what keeps the Hammerspoon main loop free.
     -- The body comes back as a string so a macro can store or parse it.
+    -- Like aiChat, the request settles once -- the first of the HTTP callback
+    -- or the timeout budget wins; a wedged server releases the macro.
+    local settled = false
     local function finish(body, err)
-      -- hs.http may call back on a timer thread; hop back to the main thread
-      -- before touching any action state.
+      if settled then return end
+      settled = true
       hsInstance.timer.doAfter(0, function()
         callback(body, err)
       end)
     end
+    hsInstance.timer.doAfter(env.httpTimeoutSeconds or 30, function()
+      finish(nil, "请求超时（" .. tostring(env.httpTimeoutSeconds or 30) .. "s）")
+    end)
     hsInstance.http.doAsyncRequest(opts.url, opts.method or "GET",
       opts.body and vars.expand(opts.body, vars.get) or nil, nil, function(status, body)
       if status < 200 or status >= 300 then
@@ -214,6 +220,18 @@ local function buildEnv(hsInstance, notify)
       callback(nil, "settings.json 未配置 ai.endpoint")
       return
     end
+    -- Whichever lands first -- the HTTP callback or this timeout -- settles
+    -- the action exactly once; the other is a no-op afterwards.
+    local settled = false
+    local function settle(reply, err)
+      if settled then return end
+      settled = true
+      callback(reply, err)
+    end
+    local budget = env.httpTimeoutSeconds or 30
+    hsInstance.timer.doAfter(budget, function()
+      settle(nil, "AI 请求超时（" .. tostring(budget) .. "s）")
+    end)
     local json = require("macroforge.json")
     local messages = {}
     if opts.system and opts.system ~= "" then
@@ -230,7 +248,7 @@ local function buildEnv(hsInstance, notify)
     }), headers, function(status, body)
       hsInstance.timer.doAfter(0, function()
         if status < 200 or status >= 300 then
-          callback(nil, "HTTP " .. tostring(status) .. ": "
+          settle(nil, "HTTP " .. tostring(status) .. ": "
             .. tostring(body and body:sub(1, 200) or ""))
           return
         end
@@ -238,10 +256,10 @@ local function buildEnv(hsInstance, notify)
         local reply = data and data.choices and data.choices[1]
           and data.choices[1].message and data.choices[1].message.content
         if type(reply) ~= "string" then
-          callback(nil, "AI 响应格式异常")
+          settle(nil, "AI 响应格式异常")
           return
         end
-        callback(reply, nil)
+        settle(reply, nil)
       end)
     end)
   end
@@ -256,6 +274,7 @@ local function defaultSettings()
     reloadHotkey  = { mods = { "cmd", "ctrl", "alt" }, key = "r" },
     editorPort    = 8099,
     menubar       = true,
+    requestTimeoutSeconds = 30,
     ai            = { endpoint = "", model = "", apiKey = "" },
   }
 end
@@ -547,6 +566,9 @@ function Macroforge.start(opts)
 
   -- Hand the AI settings to the env bridge; aiChat reads them per call.
   env.ai = state.settings.ai
+  -- Outbound HTTP (ai + httpRequest) settles within this budget; a wedged
+  -- gateway must release the macro instead of leaking its re-entry guard.
+  env.httpTimeoutSeconds = state.settings.requestTimeoutSeconds or 30
 
   Macroforge.bindTriggers()
 

@@ -98,6 +98,8 @@ function fake.new()
   -- choose the outcome without a network, mirroring env.httpResponse.
   -- env.ai mirrors the settings table the production bridge reads per call.
   env.ai = {}
+  -- The production bridges settle outbound HTTP within this budget.
+  env.httpTimeoutSeconds = 30
   env.aiCalls = {}
   env.aiReplyText = "模拟回复"
   env.aiChatError = nil

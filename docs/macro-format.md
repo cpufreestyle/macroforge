@@ -81,6 +81,7 @@ refuses re-entry, which also protects a hot key you hold down.
 | `ai.endpoint` | *(empty)* | Full URL of an OpenAI-compatible chat endpoint, e.g. a local AI gateway's `/v1/chat/completions`. Empty disables the `ai` action. |
 | `ai.model` | *(empty)* | Default model id the `ai` action sends; overridable per action. |
 | `ai.apiKey` | *(empty)* | Sent as `Authorization: Bearer …`; leave empty for local gateways. settings.json is git-ignored — keep keys here, not in macro files. |
+| `requestTimeoutSeconds` | `30` | Budget for every outbound HTTP call (`ai` and `httpRequest`). On timeout the action fails with a readable reason instead of hanging the macro. |
 
 ## Failure policy
 
