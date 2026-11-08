@@ -71,6 +71,7 @@ function router.new(opts)
     reload = opts.reload or function() return true end,
     run = opts.run,
     aiCreate = opts.aiCreate,
+    aiModels = opts.aiModels,
   }, router)
 end
 
@@ -201,6 +202,15 @@ function router:route(method, path, body, headers)
     if model and model:match("^%s*(.-)%s*$") == "" then model = nil end
     self.aiCreate(request, model)
     return send(202, json.encode({ started = true }))
+  end
+
+  -- Model discovery for the editor's AI-create dropdown. Served from the
+  -- injected fetcher (loopback gateway, fetched on demand).
+  if method == "GET" and path == BASE .. "/api/ai/models" then
+    if not self.aiModels then
+      return send(501, json.encode({ error = "AI model discovery is not configured" }))
+    end
+    return send(200, json.encode({ models = self.aiModels() }))
   end
 
   return send(404, json.encode({ error = "not found: " .. method .. " " .. path }))

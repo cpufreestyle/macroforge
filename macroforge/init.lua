@@ -510,12 +510,38 @@ function Macroforge.startEditor()
     print("[Macroforge] editor.html not found at " .. p.editorPath)
     return nil
   end
+
+  -- The model list behind the editor's AI-create dropdown. Derived from the
+  -- configured endpoint (.../v1/chat/completions -> .../v1/models). A
+  -- synchronous request is fine: the gateway is on loopback and the editor
+  -- fetches the list once per modal open. Errors yield an empty list -- the
+  -- free-text input keeps working either way.
+  local function aiModels()
+    local ai = state.env.ai or {}
+    if type(ai.endpoint) ~= "string" or ai.endpoint == "" then return {} end
+    local modelsUrl = ai.endpoint:match("^(.*)/chat/completions$")
+    if not modelsUrl then return {} end
+    modelsUrl = modelsUrl .. "/models"
+    local headers = nil
+    if type(ai.apiKey) == "string" and ai.apiKey ~= "" then
+      headers = { ["Authorization"] = "Bearer " .. ai.apiKey }
+    end
+    local status, body = state.hs.http.doRequest(modelsUrl, "GET", nil, headers)
+    if not status or status < 200 or status >= 300 then return {} end
+    local data = require("macroforge.json").decode(body or "")
+    local out = {}
+    for _, m in ipairs((data and data.data) or {}) do
+      if type(m.id) == "string" then out[#out + 1] = m.id end
+    end
+    return out
+  end
   state.router = require("macroforge.router").new({
     store = state.store,
     editorHTML = html,
     reload = function() return Macroforge.reload() end,
     run = function(macro) return Macroforge.playMacro(macro) end,
     aiCreate = makeAiCreator(state.env, state.store, Macroforge.notify),
+    aiModels = aiModels,
   })
   state.server = editorMod.start({
     hs = hsInstance,
