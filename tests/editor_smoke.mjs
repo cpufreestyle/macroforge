@@ -470,6 +470,10 @@ qsClose.click();
 check("dismissing the quick start empties it",
   quickstart.children.length === 0 && quickstart.textContent === "",
   JSON.stringify(quickstart.textContent || "").slice(0, 40));
+byIdOf("btn-tutorial").click();
+check("the toolbar tutorial button brings the steps back",
+  quickstart.querySelectorAll("li").length === 4,
+  quickstart.querySelectorAll("li").length + " steps after reopening");
 
 // The trigger card names the selected trigger even before opening the dropdown.
 check("the trigger card describes the current trigger",

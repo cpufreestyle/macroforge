@@ -911,6 +911,7 @@
     <button type="button" id="mode-json" aria-pressed="false">JSON</button>
   </div>
   <div class="spacer"></div>
+  <button type="button" id="btn-tutorial" class="ghost" title="重新显示顶部四步入门卡片。">教程</button>
   <button type="button" id="btn-reload" class="ghost" title="丢弃未存储的修改，重新读取磁盘上的宏文件。">重新载入</button>
   <button type="button" id="btn-run" class="ghost" aria-keyshortcuts="Enter" title="先存储（如有修改），再立刻运行一次当前宏。">运行</button>
   <button type="button" id="btn-delete" class="danger ghost" aria-describedby="delete-warning">删除</button>
@@ -1254,6 +1255,11 @@
     try { window.localStorage.setItem(QUICKSTART_KEY, '1'); } catch (e) { /* memory only */ }
     var host = $('quickstart');
     if (host) host.textContent = '';
+  }
+
+  function showQuickstart() {
+    try { window.localStorage.removeItem(QUICKSTART_KEY); } catch (e) { /* memory only */ }
+    renderQuickstart();
   }
 
   function renderQuickstart() {
@@ -2304,6 +2310,7 @@
     });
 
     $('btn-save').addEventListener('click', function () { save(); });
+    $('btn-tutorial').addEventListener('click', showQuickstart);
     $('btn-delete').addEventListener('click', removeMacro);
     $('btn-new').addEventListener('click', newMacro);
     $('btn-ai-new').addEventListener('click', openAiModal);

@@ -43,7 +43,7 @@ no build step. It is served from the project root, not from `macroforge/`.
 ### Editor teaching layer
 
 The form is the whole onboarding surface, because there is no separate tutorial
-and no wizard. Three pieces carry it:
+and no wizard. Four pieces carry it:
 
 - **Field tips.** Every parameter label renders a `?` badge and a one-line
   explanation built from the catalog: the parameter type, whether it is
@@ -60,6 +60,9 @@ and no wizard. Three pieces carry it:
   dismissible and the dismissal is remembered in `localStorage` under
   `macroforge.quickstart.dismissed`; a missing or throwing `localStorage`
   (a `file://` page) is treated as "not dismissed" rather than fatal.
+- **Replay button.** The toolbar's `教程` button clears the same
+  `localStorage` key and re-renders the quick start, so the four steps can be
+  looked at again after being dismissed.
 
 Trigger and action definitions carry the vocabulary twice. `label` and
 `description` are the stable English text used by the docs, the console and the

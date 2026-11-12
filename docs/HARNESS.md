@@ -13,7 +13,7 @@ LUA=/opt/homebrew/bin/lua ./scripts/test.sh
 lua tests/run.lua          # direct
 ```
 
-Current result: **149 tests, 0 failures.** The runner prints one `ok` or `FAIL`
+Current result: **159 tests, 0 failures.** The runner prints one `ok` or `FAIL`
 line per test and exits non-zero on any failure, so it works as a CI gate.
 
 ## How the runner works
@@ -103,7 +103,7 @@ reverted:
 | re-guard `setInterface` behind `if server.setInterface then` | 1 test fails |
 
 Each mutation produced failures, and restoring the code returned the suite to
-149 green. The tests observe real behaviour, not mocked outcomes.
+159 green. The tests observe real behaviour, not mocked outcomes.
 
 ## Adding a test
 
@@ -127,9 +127,10 @@ Each mutation produced failures, and restoring the code returned the suite to
   that a real id clash is still rejected) and the teaching layer: every
   parameter label carries a `?` badge and a tip, hovering fills the shared
   bubble, a native `title` is adopted into it, the quick start lists four steps
-  and can be dismissed, and the trigger card describes the current trigger. It
-  does not exercise the form-to-JSON conversion, deletion, or anything that
-  needs a real browser and a real Hammerspoon behind it.
+  can be dismissed and reopened from the toolbar's `教程` button, and the
+  trigger card describes the current trigger. It does not exercise the
+  form-to-JSON conversion, deletion, or anything that needs a real browser and
+  a real Hammerspoon behind it.
 
 Bubble placement is the one part the stub cannot check: it has no layout, so a
 bubble that renders perfectly in the harness can still be positioned off-screen
