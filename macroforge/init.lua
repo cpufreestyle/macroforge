@@ -566,6 +566,41 @@ function Macroforge.startEditor()
     end
     return out
   end
+
+  -- The editor's AI helper. It answers questions about the current macro and
+  -- never writes files; changes go through the macro author above. The catalog
+  -- is serialized into the prompt so advice cannot reference actions that do
+  -- not exist. Asynchronous: the caller polls for the reply.
+  local function aiAsk(request, modelOverride, macroId, done)
+    local macro = nil
+    if macroId then macro = state.store:byId(macroId) end
+    local lines = {
+      "你是 macOS 自动化工具 Macroforge 的中文助手。回答简洁、可执行，最多 6 条要点。",
+      "不输出宏 JSON，除非用户明确要求；需要改宏时建议用编辑器的 AI 新建/修改，或给出具体字段改法。",
+      "可用动作（参数名后带 * 为必填）：",
+    }
+    for _, def in ipairs(catalog.actions) do
+      local params = {}
+      for _, p in ipairs(def.params or {}) do
+        params[#params + 1] = p.name .. (p.required and "*" or "")
+      end
+      lines[#lines + 1] = "- " .. def.type .. "（"
+        .. tostring(def.zh or def.label or def.type) .. "）："
+        .. table.concat(params, ", ")
+    end
+    lines[#lines + 1] =
+      "触发器：hotkey(key*,mods)、typed(string*)、appLaunch(app*)、windowFocused(app*)、interval(minutes*)；没有 trigger 只能手动运行。"
+    lines[#lines + 1] = "文本参数里 {{变量名}} 读取 setVariable 存入的值。"
+    if macro then
+      lines[#lines + 1] = "当前宏 JSON："
+      lines[#lines + 1] = json.encode(macro)
+    else
+      lines[#lines + 1] = "当前没有选中宏。"
+    end
+    lines[#lines + 1] = "用户问题：" .. request
+    state.env.aiChat({ prompt = table.concat(lines, "\n"), model = modelOverride }, done)
+  end
+
   state.router = require("macroforge.router").new({
     store = state.store,
     editorHTML = html,
@@ -573,6 +608,7 @@ function Macroforge.startEditor()
     run = function(macro) return Macroforge.playMacro(macro) end,
     aiCreate = makeAiCreator(state.env, state.store, Macroforge.notify),
     aiModels = aiModels,
+    aiAsk = aiAsk,
   })
   state.server = editorMod.start({
     hs = hsInstance,

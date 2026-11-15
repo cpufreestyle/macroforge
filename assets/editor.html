@@ -249,6 +249,7 @@
 
   button.ghost:hover { background: var(--accent-soft); filter: none; }
   button.ghost:active { background: var(--accent-soft); filter: brightness(0.95); }
+  button.ghost[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
 
   button.danger { color: var(--danger); }
   button.danger.ghost:hover { background: var(--danger-soft); }
@@ -417,6 +418,66 @@
 
   .sidebar-foot { padding: 10px 12px; border-top: 1px solid var(--separator); }
   .sidebar-foot button { width: 100%; }
+
+  .sidebar-foot select {
+    width: 100%;
+    height: 28px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--control);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 0 6px;
+  }
+
+  .kind-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 0 12px 8px;
+  }
+
+  .kind-chip {
+    font-size: 11px;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 999px;
+    color: var(--muted);
+    background: var(--control);
+    border: 1px solid var(--border);
+  }
+
+  .kind-chip:hover { filter: none; background: var(--fill-strong); color: var(--text); }
+  .kind-chip[aria-pressed="true"] { color: #fff; background: var(--accent); border-color: transparent; }
+  .kind-chip[aria-pressed="true"]:hover { background: var(--accent); color: #fff; }
+
+  .trigger-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .trigger-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-height: 58px;
+    padding: 9px 10px;
+    text-align: left;
+    font-size: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--control);
+  }
+
+  .trigger-card .tc-icon { width: 18px; height: 18px; color: var(--muted); }
+  .trigger-card .tc-icon svg { width: 100%; height: 100%; }
+  .trigger-card:hover { filter: none; background: var(--fill-strong); }
+  .trigger-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .trigger-card[aria-pressed="true"] .tc-icon { color: var(--accent); }
 
 
   /* ---- Editor surface ---- */
@@ -906,11 +967,13 @@
   <div class="traffic-lights" aria-hidden="true"><span class="tl close"></span><span class="tl min"></span><span class="tl zoom"></span></div>
   <div class="window-title" id="window-title">Macroforge</div>
   <div class="brand"><span class="brand-mark"></span>Macroforge</div>
-  <div class="segmented" role="group" aria-label="编辑模式">
+  <div class="segmented" id="mode-switch" role="group" aria-label="编辑模式">
     <button type="button" id="mode-form" aria-pressed="true">表单</button>
     <button type="button" id="mode-json" aria-pressed="false">JSON</button>
   </div>
   <div class="spacer"></div>
+  <button type="button" id="btn-simple" class="ghost" aria-pressed="false" title="简单模式：只保留名称、触发方式和动作，隐藏 ID、JSON 等高级选项。">简单模式</button>
+  <button type="button" id="btn-ai-help" class="ghost" title="让 AI 解释当前宏、排查问题或给出改进建议。">AI 助手</button>
   <button type="button" id="btn-tutorial" class="ghost" title="重新显示顶部四步入门卡片。">教程</button>
   <button type="button" id="btn-reload" class="ghost" title="丢弃未存储的修改，重新读取磁盘上的宏文件。">重新载入</button>
   <button type="button" id="btn-run" class="ghost" aria-keyshortcuts="Enter" title="先存储（如有修改），再立刻运行一次当前宏。">运行</button>
@@ -927,8 +990,10 @@
     <div class="sidebar-tools">
       <input type="text" id="filter" name="filter" autocomplete="off" placeholder="搜索…" aria-label="搜索宏">
     </div>
-    <ul class="macro-list" id="macro-list"></ul>
+    <div class="kind-chips" id="kind-chips" role="group" aria-label="按触发类型过滤"></div>
+    <ul class="macro-list" id="macro-list" tabindex="0" aria-label="宏列表，方向键切换"></ul>
     <div class="sidebar-foot">
+      <select id="new-template" aria-label="从模板新建宏"></select>
       <button type="button" id="btn-ai-new" class="ghost">AI 新建宏</button>
       <button type="button" id="btn-new">新建宏</button>
     </div>
@@ -955,13 +1020,13 @@
           <div class="grid">
             <label class="field"><span class="lab" tabindex="0" data-help="给宏起一个人能读懂的名字，只用于显示和搜索，不会进入文件名。">名称<span class="help" aria-hidden="true">?</span></span>
               <input type="text" id="f-name" name="macro-name" autocomplete="off" spellcheck="false" placeholder="例如：插入邮件签名…"></label>
-            <label class="field"><span class="lab" tabindex="0" data-help="ID 决定磁盘上的文件名 macros/&lt;ID&gt;.json。改名会自动迁移文件；其他宏用 playMacro 引用它时靠这个 ID 定位，所以确定后尽量不要改。">ID<span class="help" aria-hidden="true">?</span></span>
+            <label class="field" id="field-id"><span class="lab" tabindex="0" data-help="ID 决定磁盘上的文件名 macros/&lt;ID&gt;.json。改名会自动迁移文件；其他宏用 playMacro 引用它时靠这个 ID 定位，所以确定后尽量不要改。">ID<span class="help" aria-hidden="true">?</span></span>
               <input type="text" id="f-id" name="macro-id" autocomplete="off" spellcheck="false" placeholder="email-signature">
               <span class="hint" id="id-hint"></span></label>
           </div>
           <div class="row" style="margin-top: 14px">
             <label class="field check" tabindex="0" data-help="取消勾选后宏仍可手动运行，但触发器不会自动调用它。"><input type="checkbox" id="f-enabled"><span>启用</span></label>
-            <label class="field check" tabindex="0" data-help="默认关闭：某一步失败就停下并通知你。开启后失败会被记录，然后继续执行后面的动作。"><input type="checkbox" id="f-continue"><span>出错时继续执行</span></label>
+            <label class="field check" id="field-continue" tabindex="0" data-help="默认关闭：某一步失败就停下并通知你。开启后失败会被记录，然后继续执行后面的动作。"><input type="checkbox" id="f-continue"><span>出错时继续执行</span></label>
           </div>
         </section>
 
@@ -969,8 +1034,8 @@
           <h3>触发方式</h3>
           <p class="card-note" id="trigger-note"></p>
           <div class="grid one">
-            <label class="field"><span>触发器类型</span>
-              <select id="f-trigger-type"></select></label>
+            <div class="trigger-picker" id="trigger-picker" role="group" aria-label="触发器类型"></div>
+            <input type="hidden" id="f-trigger-type" value="">
           </div>
           <div class="grid" id="trigger-params" style="margin-top: 12px"></div>
         </section>
@@ -1020,6 +1085,34 @@
     </div>
   </div>
 </div>
+<style>
+  #ai-help-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  #ai-help-overlay[hidden] { display: none; }
+  .ai-help-modal { background: #fff; border-radius: 12px; padding: 16px; width: min(560px, 92%); display: grid; gap: 10px; max-height: 84vh; overflow-y: auto; }
+  .ai-help-modal textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+  .ai-help-context { margin: 0; font-size: 12px; color: #666; }
+  .ai-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ai-chip { font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid #d0d0d5; background: #f5f5f7; color: #333; }
+  .ai-chip:hover { background: #ececf0; }
+  .ai-help-status { margin-right: auto; font-size: 12px; color: #666; }
+  .ai-actions { align-items: center; }
+  .ai-answer { margin: 0; padding: 10px 12px; background: #f5f5f7; border-radius: 8px; white-space: pre-wrap; font-size: 12px; line-height: 1.55; max-height: 46vh; overflow: auto; }
+</style>
+<div id="ai-help-overlay" hidden>
+  <div class="ai-help-modal" role="dialog" aria-modal="true" aria-label="AI 助手">
+    <h3>AI 助手</h3>
+    <p class="ai-help-context" id="ai-help-context"></p>
+    <div class="ai-chips" id="ai-help-chips"></div>
+    <textarea id="ai-help-request" rows="3" placeholder="问点什么，例如：怎么让它只在 Safari 打开时触发？"></textarea>
+    <input type="text" id="ai-help-model" list="ai-model-options" placeholder="模型（留空用 settings 默认）">
+    <pre class="ai-answer" id="ai-help-answer" hidden></pre>
+    <div class="ai-actions">
+      <span class="ai-help-status" id="ai-help-status"></span>
+      <button type="button" id="ai-help-close" class="ghost">关闭</button>
+      <button type="button" id="ai-help-go" class="primary">询问</button>
+    </div>
+  </div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="tip" role="tooltip" aria-hidden="true"></div>
 
@@ -1038,9 +1131,14 @@
     current: null,
     selectedId: null,
     dirty: false,
+    saving: false,
+    simple: false,
     mode: 'form',
-    filter: ''
+    filter: '',
+    filterKind: ''
   };
+  // Macros whose trigger-test hint was already shown this session.
+  var verifyHinted = {};
 
   function $(id) { return document.getElementById(id); }
 
@@ -1352,6 +1450,71 @@
     return TRIGGER_ICONS[type] || TRIGGER_ICONS.manual;
   }
 
+  // Sidebar filters, in the same order as the trigger picker. The first chip
+  // clears the filter; "manual" covers macros that have no trigger at all.
+  var KIND_CHIPS = [
+    { value: '', zh: '全部' },
+    { value: 'hotkey', zh: '热键' },
+    { value: 'typed', zh: '键入' },
+    { value: 'interval', zh: '定时' },
+    { value: 'appLaunch', zh: '应用' },
+    { value: 'windowFocused', zh: '窗口' },
+    { value: 'manual', zh: '手动' }
+  ];
+
+  // One sentence telling a first-time user how to prove the trigger works.
+  // The trigger note already explains what fires it; this answers the next
+  // question ("so how do I test it?") without leaving the page.
+  function triggerVerifyHint(type) {
+    if (type === 'hotkey') return '设置后按下这组键即可测试；没反应时先检查它是否和系统或其他宏的快捷键冲突。';
+    if (type === 'typed') return '保存后切到任意输入框敲出这串字符即可测试；字符串越长越不容易误触。';
+    if (type === 'appLaunch') return '保存后重新启动一次这个应用即可验证。';
+    if (type === 'windowFocused') return '保存后切到这个应用的窗口即可验证。';
+    if (type === 'interval') return '保存后每隔设定的分钟数自动触发一次；Hammerspoon 退出后停止。';
+    return '';
+  }
+
+  // Starter macros offered by the sidebar's template menu. Each one is a
+  // complete, valid document: the new macro can be saved and run as-is.
+  var TEMPLATES = {
+    timer: function (serial) {
+      return {
+        name: '定时提醒',
+        trigger: { type: 'interval', parameters: { minutes: 30 } },
+        actions: [{ type: 'notify', parameters: { title: '休息一下', text: '起来走两步，喝口水。' } }]
+      };
+    },
+    expand: function (serial) {
+      return {
+        name: '键入展开',
+        trigger: { type: 'typed', parameters: { string: ';sig' + (serial > 1 ? serial : ''), delete: true } },
+        actions: [{ type: 'typeText', parameters: { text: '—— 你的名字' } }]
+      };
+    },
+    applaunch: function (serial) {
+      return {
+        name: '应用启动提醒',
+        trigger: { type: 'appLaunch', parameters: { app: 'Safari' } },
+        actions: [{ type: 'notify', parameters: { title: 'Safari', text: '开始专注吧。' } }]
+      };
+    },
+    link: function (serial) {
+      return {
+        name: '一键打开网址',
+        trigger: { type: 'hotkey', parameters: { mods: 'cmd,alt', key: 'h' } },
+        actions: [{ type: 'openURL', parameters: { url: 'https://news.ycombinator.com' } }]
+      };
+    }
+  };
+
+  var TEMPLATE_OPTIONS = [
+    { value: '', zh: '从模板新建…' },
+    { value: 'timer', zh: '定时提醒' },
+    { value: 'expand', zh: '键入展开' },
+    { value: 'applaunch', zh: '应用启动提醒' },
+    { value: 'link', zh: '一键打开网址' }
+  ];
+
   function actionSummary(macro) {
     var steps = (macro.actions || []).map(function (a) { return actionLabel(a.type); });
     if (!steps.length) return '没有动作';
@@ -1399,17 +1562,46 @@
     host.appendChild(box);
   }
 
+  // One ordered list behind both the sidebar and the arrow-key navigation, so
+  // the keys always walk exactly what the user sees.
+  function visibleMacros() {
+    var query = state.filter.trim().toLowerCase();
+    var kind = state.filterKind;
+    return state.macros.slice().sort(function (a, b) {
+      return esc(a.name).localeCompare(esc(b.name));
+    }).filter(function (macro) {
+      var haystack = (esc(macro.name) + ' ' + esc(macro.id)).toLowerCase();
+      if (query && haystack.indexOf(query) === -1) return false;
+      var type = (macro.trigger && macro.trigger.type) || 'manual';
+      return !kind || type === kind;
+    });
+  }
+
+  function renderKindChips() {
+    var host = $('kind-chips');
+    if (!host.children.length) {
+      KIND_CHIPS.forEach(function (kind) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'kind-chip';
+        chip.dataset.kind = kind.value;
+        chip.textContent = kind.zh;
+        host.appendChild(chip);
+      });
+    }
+    var chips = host.querySelectorAll('button[data-kind]');
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].setAttribute('aria-pressed', chips[i].dataset.kind === state.filterKind ? 'true' : 'false');
+    }
+  }
+
   function renderList() {
     renderBanners();
+    renderKindChips();
     var list = $('macro-list');
     list.textContent = '';
-    var query = state.filter.trim().toLowerCase();
     var shown = 0;
-    state.macros.slice().sort(function (a, b) {
-      return esc(a.name).localeCompare(esc(b.name));
-    }).forEach(function (macro) {
-      var haystack = (esc(macro.name) + ' ' + esc(macro.id)).toLowerCase();
-      if (query && haystack.indexOf(query) === -1) return;
+    visibleMacros().forEach(function (macro) {
       shown++;
       var item = document.createElement('li');
       item.className = 'macro-item' + (macro.id === state.selectedId ? ' active' : '');
@@ -1474,6 +1666,24 @@
     if (hasMacro && mode === 'form') renderForm();
     if (hasMacro && mode === 'json') $('json-view').value = pretty(state.current);
     renderStatus();
+  }
+
+  // Simple mode keeps the surface to the three things a macro needs -- a name,
+  // a trigger and actions. The id is derived from the name, raw JSON and the
+  // error-policy checkbox are for people who go looking for them.
+  function simplePreference() {
+    try { return localStorage.getItem('macroforge.simple') === '1'; } catch (e) { return false; }
+  }
+
+  function applySimple(on) {
+    state.simple = !!on;
+    $('btn-simple').setAttribute('aria-pressed', state.simple ? 'true' : 'false');
+    $('field-id').hidden = state.simple;
+    $('field-continue').hidden = state.simple;
+    $('mode-switch').hidden = state.simple;
+    $('kind-chips').hidden = state.simple;
+    if (state.simple && state.mode === 'json') setMode('form');
+    try { localStorage.setItem('macroforge.simple', state.simple ? '1' : '0'); } catch (e) {}
   }
 
   // A field label with an optional ? badge. The tip hangs off the label text
@@ -1643,32 +1853,42 @@
   }
 
   function renderTrigger() {
-    var select = $('f-trigger-type');
-    select.textContent = '';
-    var manual = document.createElement('option');
-    manual.value = '';
-    manual.textContent = '手动（只从菜单或编辑器运行）';
-    select.appendChild(manual);
-    state.catalog.triggers.forEach(function (def) {
-      var option = document.createElement('option');
-      option.value = def.type;
-      // Chinese first, English kept in the option text because that is what
-      // the catalog, docs and console messages call it.
-      option.textContent = (def.zh || def.label) + (def.zh ? '（' + def.label + '）' : '');
-      select.appendChild(option);
-    });
     var trigger = state.current.trigger;
-    select.value = (trigger && trigger.type) ? trigger.type : '';
+    var current = (trigger && trigger.type) ? trigger.type : '';
+    // Icon cards instead of a dropdown: the trigger is a concept, not a value
+    // in a list, and six cards fit on one row. The hidden input keeps collect()
+    // and the change listener reading a single source of truth.
+    var host = $('trigger-picker');
+    host.textContent = '';
+    var options = [{ type: '', zh: '手动' }].concat(state.catalog.triggers.map(function (def) {
+      return { type: def.type, zh: def.zh || def.label };
+    }));
+    options.forEach(function (option) {
+      var card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'trigger-card';
+      card.dataset.triggerType = option.type;
+      card.setAttribute('aria-pressed', option.type === current ? 'true' : 'false');
+      var icon = document.createElement('span');
+      icon.className = 'tc-icon';
+      icon.innerHTML = triggerIconSVG(option.type);
+      var label = document.createElement('span');
+      label.className = 'tc-label';
+      label.textContent = option.zh;
+      card.appendChild(icon);
+      card.appendChild(label);
+      host.appendChild(card);
+    });
+    $('f-trigger-type').value = current;
     // Name the currently picked trigger and say how it fires, so the choice is
-    // legible without opening the dropdown. Reading it from the catalog rather
-    // than from select.options keeps this working on any <select> that only
-    // exposes value.
+    // legible without opening anything, then add one sentence on how to test
+    // it -- the step first-time users get stuck on.
     var note = $('trigger-note');
-    var chosen = select.value ? defFor(state.catalog.triggers, select.value) : null;
+    var chosen = current ? defFor(state.catalog.triggers, current) : null;
     note.textContent = chosen
-      ? (chosen.zh_desc || chosen.description || '')
+      ? (chosen.zh_desc || chosen.description || '') + ' ' + triggerVerifyHint(current)
       : '没有触发器：这个宏只能从菜单、侧栏 ▶ 或这里的「运行」手动执行。';
-    renderParams($('trigger-params'), triggerDef(select.value),
+    renderParams($('trigger-params'), triggerDef(current),
       trigger ? trigger.parameters : null, 'trigger');
   }
 
@@ -1994,6 +2214,11 @@
       toast(problems[0], 'error');
       return Promise.resolve(false);
     }
+    // A second click while the first write is in flight would post the same
+    // macro twice; the button reports and enforces that state.
+    if (state.saving) return Promise.resolve(false);
+    state.saving = true;
+    $('btn-save').disabled = true;
     // The file on disk is named after the id the macro had when it was loaded.
     // When the id changes, the store needs the old one to remove that file;
     // otherwise both files stay and the same macro shows up twice.
@@ -2004,12 +2229,25 @@
         state.selectedId = data.macro ? data.macro.id : macro.id;
         if (state.mode === 'json') $('json-view').value = pretty(data.macro || macro);
         syncMode(state.mode);
-        toast('已存储 ' + (data.macro ? data.macro.name : macro.name));
+        var saved = data.macro || macro;
+        $('status-time').textContent = '存储于 ' + new Date().toLocaleTimeString();
+        // First save of a macro that now has a trigger: say how to test it.
+        // Once per macro per session; a hint on every save would be noise.
+        var hint = '';
+        if (macro.trigger && macro.trigger.type && !verifyHinted[saved.id]) {
+          verifyHinted[saved.id] = true;
+          hint = triggerVerifyHint(macro.trigger.type);
+        }
+        toast('已存储 ' + saved.name + (hint ? ' · ' + hint : ''));
         return true;
       });
     }).catch(function (err) {
       toast('存储失败：' + err.message, 'error');
       return false;
+    }).then(function (ok) {
+      state.saving = false;
+      $('btn-save').disabled = false;
+      return ok;
     });
   }
 
@@ -2050,6 +2288,18 @@
     });
   }
 
+  function ensureTemplateOptions() {
+    var select = $('new-template');
+    if (select.children.length) return;
+    TEMPLATE_OPTIONS.forEach(function (option) {
+      var node = document.createElement('option');
+      node.value = option.value;
+      node.textContent = option.zh;
+      select.appendChild(node);
+    });
+    select.value = '';
+  }
+
   function ensureDatalist() {
     var host = $('macro-id-list');
     if (!host) {
@@ -2087,6 +2337,23 @@
   // One sentence in, a validated macro file out. The heavy lifting (vocabulary
   // prompt, normalize/validate/save) happens server-side in init.lua; here we
   // collect the request and wait for the new macro file to appear.
+
+  // Both AI modals suggest the gateway's model ids; fetch once per page.
+  function ensureAiModels() {
+    if (state.aiModels) return Promise.resolve(state.aiModels);
+    return api('/api/ai/models').then(function (data) {
+      state.aiModels = (data && data.models) || [];
+      var dl = $('ai-model-options');
+      dl.innerHTML = '';
+      state.aiModels.forEach(function (id) {
+        var opt = document.createElement('option');
+        opt.value = id;
+        dl.appendChild(opt);
+      });
+      return state.aiModels;
+    }).catch(function () { return []; });
+  }
+
   function openAiModal() {
     $('ai-overlay').hidden = false;
     $('ai-request').value = '';
@@ -2103,18 +2370,7 @@
     }
     // Fetch the gateway's model list once for the dropdown suggestions; the
     // input stays free-text if discovery fails.
-    if (!state.aiModels) {
-      api('/api/ai/models').then(function (data) {
-        state.aiModels = (data && data.models) || [];
-        var dl = $('ai-model-options');
-        dl.innerHTML = '';
-        state.aiModels.forEach(function (id) {
-          var opt = document.createElement('option');
-          opt.value = id;
-          dl.appendChild(opt);
-        });
-      }).catch(function () { /* free text still works */ });
-    }
+    ensureAiModels();
   }
 
   function closeAiModal() {
@@ -2164,13 +2420,141 @@
     });
   }
 
-  function newMacro() {
+  // ------------------------------------------------------------ AI assistant
+  // Reads the current macro and answers questions about it. Unlike the macro
+  // author this never writes a file: it is the "explain / why / improve" lane.
+  var aiHelpPoll = null;
+  var aiHelpTimer = null;
+
+  var AI_PROMPTS = [
+    { label: '解释这个宏', prompt: '解释这个宏每一步在做什么，用 3 到 6 条要点。' },
+    { label: '为什么没触发', prompt: '这个宏为什么可能没有触发？按触发器类型逐项排查。' },
+    { label: '帮我改进', prompt: '指出这个宏可以改进的地方，并给出具体改法。' }
+  ];
+
+  function renderAiChips() {
+    var host = $('ai-help-chips');
+    if (host.children.length) return;
+    AI_PROMPTS.forEach(function (item) {
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'ai-chip';
+      chip.dataset.prompt = item.prompt;
+      chip.textContent = item.label;
+      host.appendChild(chip);
+    });
+  }
+
+  function openAiHelp() {
+    var overlay = $('ai-help-overlay');
+    overlay.hidden = false;
+    renderAiChips();
+    resetAiHelp();
+    var triggerType = state.current && state.current.trigger && state.current.trigger.type;
+    $('ai-help-context').textContent = state.current
+      ? '当前宏：' + (state.current.name || state.current.id) + '（' + (triggerType || '手动') + '）'
+      : '还没有选中宏：可以先问通用问题。';
+    $('ai-help-answer').hidden = true;
+    $('ai-help-answer').textContent = '';
+    $('ai-help-request').value = '';
+    $('ai-help-request').focus();
+    ensureAiModels();
+  }
+
+  function resetAiHelp() {
+    if (aiHelpPoll) { clearInterval(aiHelpPoll); aiHelpPoll = null; }
+    if (aiHelpTimer) { clearInterval(aiHelpTimer); aiHelpTimer = null; }
+    $('ai-help-go').disabled = false;
+    $('ai-help-go').textContent = '询问';
+    $('ai-help-status').textContent = '';
+  }
+
+  function closeAiHelp() {
+    $('ai-help-overlay').hidden = true;
+    resetAiHelp();
+  }
+
+  function askAiHelp(promptText) {
+    var request = (promptText || $('ai-help-request').value || '').trim();
+    if (!request) {
+      toast('先写一个问题', 'error');
+      return;
+    }
+    $('ai-help-request').value = request;
+    var answer = $('ai-help-answer');
+    answer.hidden = false;
+    answer.textContent = 'AI 正在思考…';
+    if (answer.scrollIntoView) answer.scrollIntoView({ block: 'nearest' });
+    $('ai-help-go').disabled = true;
+    $('ai-help-go').textContent = '询问中…';
+    $('ai-help-status').textContent = '已发送，等待 AI 回复…';
+    var askedAt = Date.now();
+    if (aiHelpTimer) clearInterval(aiHelpTimer);
+    aiHelpTimer = setInterval(function () {
+      var text = answer.textContent || '';
+      if (text.indexOf('AI 正在思考') !== 0) return;
+      var seconds = Math.round((Date.now() - askedAt) / 1000);
+      answer.textContent = 'AI 正在思考… 已等待 ' + seconds + ' 秒';
+    }, 1000);
+    var payload = { request: request };
+    var model = $('ai-help-model').value.trim();
+    if (model) payload.model = model;
+    if (state.current) payload.id = state.current.id;
+    api('/api/ai/ask', { method: 'POST', body: payload }).then(function (data) {
+      var ticket = data && data.id;
+      if (!ticket) throw new Error('没有拿到请求编号');
+      return new Promise(function (resolve, reject) {
+        var tries = 0;
+        aiHelpPoll = setInterval(function () {
+          tries += 1;
+          api('/api/ai/ask/' + encodeURIComponent(ticket)).then(function (res) {
+            if (res.status === 'done') {
+              clearInterval(aiHelpPoll); aiHelpPoll = null;
+              resolve(res.text || '');
+            } else if (res.status === 'error') {
+              clearInterval(aiHelpPoll); aiHelpPoll = null;
+              reject(new Error(res.error || '未知错误'));
+            } else if (tries > 120) {
+              clearInterval(aiHelpPoll); aiHelpPoll = null;
+              reject(new Error('等待超时'));
+            }
+          }).catch(function (err) {
+            clearInterval(aiHelpPoll); aiHelpPoll = null;
+            reject(err);
+          });
+        }, 800);
+      });
+    }).then(function (text) {
+      answer.textContent = text || '（没有回答）';
+      $('ai-help-status').textContent = '回答完成';
+    }).catch(function (err) {
+      var message = err.message || '未知错误';
+      if (/HTTP 429/.test(message)) {
+        message = '模型额度已用完或被限流（HTTP 429），额度恢复后再试。';
+      }
+      answer.textContent = 'AI 回答失败：' + message;
+      $('ai-help-status').textContent = '请求失败';
+    }).then(function () {
+      if (aiHelpTimer) { clearInterval(aiHelpTimer); aiHelpTimer = null; }
+      $('ai-help-go').disabled = false;
+      $('ai-help-go').textContent = '询问';
+    });
+  }
+
+  function newMacro(template) {
     if (state.dirty && !confirm('放弃未存储的修改？')) return;
     var used = {};
     state.macros.forEach(function (macro) { used[macro.id] = true; });
     var serial = 1;
     while (used['macro-' + serial]) serial++;
-    state.current = {
+    var preset = template && TEMPLATES[template] ? TEMPLATES[template](serial) : null;
+    state.current = preset ? {
+      id: 'macro-' + serial,
+      name: preset.name,
+      enabled: true,
+      trigger: preset.trigger,
+      actions: preset.actions
+    } : {
       id: 'macro-' + serial,
       name: '宏 ' + serial,
       enabled: true,
@@ -2255,6 +2639,13 @@
 
   function wire() {
     wireTips();
+    ensureTemplateOptions();
+    $('kind-chips').addEventListener('click', function (event) {
+      var chip = event.target.closest('button[data-kind]');
+      if (!chip) return;
+      state.filterKind = chip.dataset.kind;
+      renderList();
+    });
     $('macro-list').addEventListener('click', function (event) {
       var trigger = event.target.closest('button[data-act="run"]');
       if (trigger) {
@@ -2268,6 +2659,34 @@
         idAuto = true;
         selectMacro(item.dataset.id);
       }
+    });
+    // Arrow keys walk the visible order, so keyboard users do not need the
+    // mouse just to move between macros. The list itself is the focus target.
+    $('macro-list').addEventListener('keydown', function (event) {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      var ordered = visibleMacros();
+      if (!ordered.length) return;
+      var at = -1;
+      for (var i = 0; i < ordered.length; i++) {
+        if (ordered[i].id === state.selectedId) { at = i; break; }
+      }
+      var next;
+      if (at < 0) next = event.key === 'ArrowDown' ? 0 : ordered.length - 1;
+      else next = Math.min(ordered.length - 1, Math.max(0, at + (event.key === 'ArrowDown' ? 1 : -1)));
+      event.preventDefault();
+      idAuto = true;
+      selectMacro(ordered[next].id);
+    });
+    $('trigger-picker').addEventListener('click', function (event) {
+      var card = event.target.closest('button[data-trigger-type]');
+      if (!card) return;
+      onTypeChange('trigger', undefined, card.dataset.triggerType || '');
+    });
+    $('new-template').addEventListener('change', function (event) {
+      var key = event.target.value;
+      if (!key) return;
+      newMacro(key);
+      event.target.value = '';
     });
 
     $('actions').addEventListener('click', function (event) {
@@ -2310,12 +2729,24 @@
     });
 
     $('btn-save').addEventListener('click', function () { save(); });
+    $('btn-simple').addEventListener('click', function () {
+      applySimple(!state.simple);
+      toast(state.simple ? '简单模式：只保留名称、触发方式和动作' : '已切换到完整模式');
+    });
     $('btn-tutorial').addEventListener('click', showQuickstart);
     $('btn-delete').addEventListener('click', removeMacro);
     $('btn-new').addEventListener('click', newMacro);
     $('btn-ai-new').addEventListener('click', openAiModal);
     $('ai-cancel').addEventListener('click', closeAiModal);
     $('ai-go').addEventListener('click', aiSubmit);
+    $('btn-ai-help').addEventListener('click', openAiHelp);
+    $('ai-help-close').addEventListener('click', closeAiHelp);
+    $('ai-help-go').addEventListener('click', function () { askAiHelp(); });
+    $('ai-help-chips').addEventListener('click', function (event) {
+      var chip = event.target.closest('button[data-prompt]');
+      if (!chip) return;
+      askAiHelp(chip.dataset.prompt);
+    });
     $('btn-add-action').addEventListener('click', addAction);
     $('btn-reload').addEventListener('click', reloadAll);
     $('btn-run').addEventListener('click', function () {
@@ -2334,6 +2765,8 @@
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
         save();
+      } else if (event.key === 'Escape' && !$('ai-help-overlay').hidden) {
+        closeAiHelp();
       }
     });
 
@@ -2346,6 +2779,7 @@
 
   function boot() {
     wire();
+    applySimple(simplePreference());
     renderQuickstart();
     renderStatus();
     // The page is only useful when Hammerspoon serves it. Opened from disk the

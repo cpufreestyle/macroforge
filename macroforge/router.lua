@@ -72,6 +72,7 @@ function router.new(opts)
     run = opts.run,
     aiCreate = opts.aiCreate,
     aiModels = opts.aiModels,
+    aiAsk = opts.aiAsk,
   }, router)
 end
 
@@ -103,7 +104,13 @@ function router:route(method, path, body, headers)
     if not self.editorHTML then
       return send(404, json.encode({ error = "editor assets are missing" }))
     end
-    return send(200, self.editorHTML, "text/html; charset=utf-8")
+    -- no-store keeps a browser from pinning an old editor page across a
+    -- reload; the in-memory copy is refreshed by POST /api/reload (or a full
+    -- Hammerspoon reload) when editor.html changes on disk.
+    return 200, self.editorHTML, {
+      ["Content-Type"] = "text/html; charset=utf-8",
+      ["Cache-Control"] = "no-store",
+    }
   end
 
   if method == "GET" and path == BASE .. "/api/catalog" then
@@ -214,6 +221,63 @@ function router:route(method, path, body, headers)
       return send(501, json.encode({ error = "AI model discovery is not configured" }))
     end
     return send(200, json.encode({ models = self.aiModels() }))
+  end
+
+  -- AI helper: a question goes in, a ticket comes back; the reply is polled
+  -- from GET /api/ai/ask/<ticket>. Asynchronous because the model round trip
+  -- takes seconds and must not block the HTTP server.
+  if method == "POST" and path == BASE .. "/api/ai/ask" then
+    if not self.aiAsk then
+      return send(501, json.encode({ error = "AI assistant is not configured" }))
+    end
+    local data = json.decode(body or "")
+    local request = data and type(data.request) == "string" and data.request or ""
+    if request:match("^%s*(.-)%s*$") == "" then
+      return send(400, json.encode({ error = "missing request text" }))
+    end
+    local model = data and type(data.model) == "string" and data.model or nil
+    if model and model:match("^%s*(.-)%s*$") == "" then model = nil end
+    local macroId = data and type(data.id) == "string" and data.id or nil
+    if macroId and macroId:match("^%s*(.-)%s*$") == "" then macroId = nil end
+
+    self.aiAnswers = self.aiAnswers or {}
+    local count = 0
+    for _ in pairs(self.aiAnswers) do count = count + 1 end
+    if count >= 20 then
+      local oldestKey, oldestAt = nil, math.huge
+      for key, entry in pairs(self.aiAnswers) do
+        local at = (type(entry) == "table" and entry.at) or 0
+        if at < oldestAt then oldestAt = at; oldestKey = key end
+      end
+      if oldestKey then self.aiAnswers[oldestKey] = nil end
+    end
+
+    local ticket = string.format("%d-%06d", os.time(), math.random(0, 999999))
+    self.aiAnswers[ticket] = { status = "pending", at = os.time() }
+    self.aiAsk(request, model, macroId, function(reply, err)
+      local entry = self.aiAnswers and self.aiAnswers[ticket]
+      if not entry then return end
+      entry.at = os.time()
+      if err then
+        entry.status = "error"
+        entry.error = tostring(err)
+      else
+        entry.status = "done"
+        entry.text = tostring(reply or "")
+      end
+    end)
+    return send(202, json.encode({ id = ticket, status = "pending" }))
+  end
+
+  if method == "GET" then
+    local ticket = path:match("^" .. BASE .. "/api/ai/ask/([^/]+)$")
+    if ticket then
+      local entry = self.aiAnswers and self.aiAnswers[ticket]
+      if not entry then
+        return send(404, json.encode({ error = "unknown AI request" }))
+      end
+      return send(200, json.encode(entry))
+    end
   end
 
   return send(404, json.encode({ error = "not found: " .. method .. " " .. path }))

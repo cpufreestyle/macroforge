@@ -13,7 +13,7 @@ LUA=/opt/homebrew/bin/lua ./scripts/test.sh
 lua tests/run.lua          # direct
 ```
 
-Current result: **159 tests, 0 failures.** The runner prints one `ok` or `FAIL`
+Current result: **163 tests, 0 failures.** The runner prints one `ok` or `FAIL`
 line per test and exits non-zero on any failure, so it works as a CI gate.
 
 ## How the runner works
@@ -37,7 +37,7 @@ file is worse than an explicit list to maintain.
 | --- | --- | --- |
 | `test_model.lua` | 16 | normalization of editor strings, validation rejections |
 | `test_conditions.lua` | 14 | every `if` predicate against a probe table |
-| `test_router.lua` | 13 | each API route, status codes, Origin policy |
+| `test_router.lua` | 17 | each API route, status codes, Origin policy |
 | `test_triggers.lua` | 12 | hot key, typed string, app launch, focus, timer binding |
 | `test_blocks.lua` | 11 | if/else/endIf, nesting, skip and resume |
 | `test_actions.lua` | 11 | each action against the fake env |
@@ -75,6 +75,14 @@ payload the HTTP API answers (the catalog plus every macro in `macros/`) and
 hands it to `tests/editor_smoke.mjs`, which runs the page's own script against a
 minimal stub DOM and asserts on the result.
 
+The harness builds only what the script creates, not the static markup: options,
+chips and trigger cards exist in the stub because the page renders them. The
+smoke run covers the trigger-kind chips, arrow-key navigation, template
+prefills, save feedback (status bar stamp, re-enabled button, one-time trigger
+hint), the trigger card picker, the simple-mode toggle and the AI helper
+(opening with the macro in context, asking with its id, polling a ticket to the
+answer), so those paths fail here before a browser sees them.
+
 The test is skipped, not failed, when `node` is not on PATH. To run the Node
 harness directly you need the *API payload*, not a macro file:
 
@@ -103,7 +111,7 @@ reverted:
 | re-guard `setInterface` behind `if server.setInterface then` | 1 test fails |
 
 Each mutation produced failures, and restoring the code returned the suite to
-159 green. The tests observe real behaviour, not mocked outcomes.
+163 green. The tests observe real behaviour, not mocked outcomes.
 
 ## Adding a test
 

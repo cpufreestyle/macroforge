@@ -245,3 +245,57 @@ test("router: ai/create is gated and asynchronous", function()
   local status3 = router2:route("POST", "/macroforge/api/ai/create", json.encode({ request = "  " }))
   eq(400, status3, "an empty request must be refused")
 end)
+
+test("router: AI ask returns a ticket and the poll returns the answer", function()
+  local store = storeMod.new({ fs = memoryFs({}), macrosDir = "/macros" })
+  local seen = nil
+  local router = routerMod.new({
+    store = store,
+    editorHTML = "<html>editor</html>",
+    aiAsk = function(request, model, macroId, done)
+      seen = { request = request, model = model, macroId = macroId }
+      done("解释：每分钟提醒一次。", nil)
+    end,
+  })
+  local status, body = router:route("POST", "/macroforge/api/ai/ask",
+    json.encode({ request = "解释一下", id = "typed-timestamp", model = "m1" }))
+  eq(202, status, "the ask endpoint acknowledges with a ticket")
+  local ticket = json.decode(body).id
+  truthy(type(ticket) == "string" and #ticket > 0, "expected a ticket id")
+  eq("解释一下", seen.request)
+  eq("typed-timestamp", seen.macroId, "the macro id must reach the helper")
+  eq("m1", seen.model, "an explicit model must reach the helper")
+  local pollStatus, pollBody = router:route("GET", "/macroforge/api/ai/ask/" .. ticket, "")
+  eq(200, pollStatus)
+  local payload = json.decode(pollBody)
+  eq("done", payload.status)
+  eq("解释：每分钟提醒一次。", payload.text)
+end)
+
+test("router: AI ask rejects an empty question", function()
+  local router = routerMod.new({
+    store = storeMod.new({ fs = memoryFs({}), macrosDir = "/macros" }),
+    editorHTML = "<html>editor</html>",
+    aiAsk = function() end,
+  })
+  local status, body = router:route("POST", "/macroforge/api/ai/ask", json.encode({ request = "  " }))
+  eq(400, status)
+  truthy(json.decode(body).error:find("request") ~= nil, "the error should name the missing field")
+end)
+
+test("router: an unknown AI ticket is a 404", function()
+  local router = routerMod.new({
+    store = storeMod.new({ fs = memoryFs({}), macrosDir = "/macros" }),
+    editorHTML = "<html>editor</html>",
+    aiAsk = function() end,
+  })
+  eq(404, router:route("GET", "/macroforge/api/ai/ask/nope", ""))
+end)
+
+test("router: the editor page is served without browser caching", function()
+  local router = makeRouter({})
+  local status, _, headers = router:route("GET", "/macroforge/", "")
+  eq(200, status)
+  eq("no-store", headers["Cache-Control"],
+    "a cached page would hide a server-side editor.html refresh")
+end)

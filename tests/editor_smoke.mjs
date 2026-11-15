@@ -541,6 +541,173 @@ check("a real id clash is still rejected",
   byIdOf("toast").textContent.indexOf("重复") !== -1,
   byIdOf("toast").textContent);
 
+// ------------------------------------------------- usability pass assertions
+// Trigger-type chips narrow the sidebar without touching the search box.
+const chipHost = byIdOf("kind-chips");
+const chips = chipHost.querySelectorAll("button[data-kind]");
+check("the sidebar renders one chip per trigger kind",
+  chips.length >= 7,
+  chips.length + " chips");
+const hotkeyChip = chips.find((c) => c.dataset.kind === "hotkey");
+hotkeyChip.dispatch("click", { target: hotkeyChip });
+const hotkeyRows = byIdOf("macro-list").children.filter((c) => c.className.split(/\s+/).includes("macro-item"));
+const hotkeyIds = fixture.macros.filter((m) => m.trigger && m.trigger.type === "hotkey").map((m) => m.id).sort();
+check("a chip filters the sidebar to one trigger kind",
+  hotkeyIds.length > 0 && String(hotkeyRows.map((r) => r.dataset.id).sort()) === String(hotkeyIds),
+  "expected " + JSON.stringify(hotkeyIds) + ", got " + JSON.stringify(hotkeyRows.map((r) => r.dataset.id)));
+const allChip = chips.find((c) => c.dataset.kind === "");
+allChip.dispatch("click", { target: allChip });
+check("the 全部 chip restores every row",
+  byIdOf("macro-list").children.filter((c) => c.className.split(/\s+/).includes("macro-item")).length === fixture.macros.length,
+  "rows=" + byIdOf("macro-list").children.length);
+
+// Arrow keys walk the visible order instead of requiring the mouse.
+const orderedNames = fixture.macros.slice()
+  .sort((a, b) => a.name.localeCompare(b.name))
+  .map((m) => m.name);
+const selectedAt = orderedNames.indexOf(selected.name);
+const expectedNext = orderedNames[Math.min(orderedNames.length - 1, Math.max(0, selectedAt + 1))];
+byIdOf("macro-list").dispatch("keydown", { key: "ArrowDown" });
+await settle();
+check("ArrowDown selects the next macro in the visible order",
+  byIdOf("window-title").textContent === expectedNext,
+  "expected " + JSON.stringify(expectedNext) + ", got " + JSON.stringify(byIdOf("window-title").textContent));
+
+// The template menu starts from a complete, valid macro rather than blank
+// fields. This drives the real change handler, not a copy of its logic.
+const templateSelect = byIdOf("new-template");
+templateSelect.value = "timer";
+templateSelect.dispatch("change", { target: templateSelect });
+await settle();
+check("a template prefills a runnable macro",
+  byIdOf("f-name").value === "定时提醒"
+  && byIdOf("f-trigger-type").value === "interval"
+  && byIdOf("actions").querySelectorAll(".action").length === 1,
+  "name=" + JSON.stringify(byIdOf("f-name").value)
+  + " trigger=" + JSON.stringify(byIdOf("f-trigger-type").value)
+  + " actions=" + byIdOf("actions").querySelectorAll(".action").length);
+check("the template menu resets to its placeholder",
+  templateSelect.value === "",
+  "value=" + JSON.stringify(templateSelect.value));
+
+// Saving reports itself in the status bar and, the first time a macro with a
+// trigger is stored, tells the user how to prove the trigger works.
+currentFetch = fetchSave;
+byIdOf("btn-save").click();
+await settle();
+await settle();
+check("a successful save stamps the status bar",
+  (byIdOf("status-time").textContent || "").indexOf("存储于") === 0,
+  JSON.stringify(byIdOf("status-time").textContent));
+check("the save button is usable again after the write",
+  byIdOf("btn-save").disabled === false,
+  "disabled=" + byIdOf("btn-save").disabled);
+check("the first save of a triggered macro explains how to test it",
+  byIdOf("toast").textContent.includes("分钟"),
+  JSON.stringify(byIdOf("toast").textContent));
+
+// The trigger picker is a card grid now; clicking a card switches the
+// parameters and appends the test hint to the note.
+const triggerCards = byIdOf("trigger-picker").querySelectorAll(".trigger-card");
+check("the trigger picker renders one card per type plus manual",
+  triggerCards.length === fixture.catalog.triggers.length + 1,
+  triggerCards.length + " cards for " + (fixture.catalog.triggers.length + 1) + " types");
+const typedCard = triggerCards.find((c) => c.dataset.triggerType === "typed");
+typedCard.dispatch("click", { target: typedCard });
+await settle();
+check("clicking a trigger card selects that trigger",
+  byIdOf("f-trigger-type").value === "typed"
+  && byIdOf("trigger-params").querySelectorAll('[data-param="string"]').length === 1,
+  "value=" + JSON.stringify(byIdOf("f-trigger-type").value));
+check("the trigger note says how to test the trigger",
+  (byIdOf("trigger-note").textContent || "").includes("输入框"),
+  JSON.stringify(byIdOf("trigger-note").textContent));
+
+// Simple mode is a view switch, not a second editor: the three things a macro
+// needs stay, the advanced controls hide, and switching back restores them.
+const btnSimple = byIdOf("btn-simple");
+btnSimple.click();
+await settle();
+check("simple mode hides the advanced controls",
+  btnSimple.getAttribute("aria-pressed") === "true"
+  && byIdOf("field-id").hidden === true
+  && byIdOf("field-continue").hidden === true
+  && byIdOf("mode-switch").hidden === true
+  && byIdOf("kind-chips").hidden === true,
+  "pressed=" + btnSimple.getAttribute("aria-pressed")
+  + " id=" + byIdOf("field-id").hidden
+  + " continue=" + byIdOf("field-continue").hidden
+  + " mode=" + byIdOf("mode-switch").hidden);
+check("simple mode says what it kept",
+  byIdOf("toast").textContent.includes("简单模式"),
+  JSON.stringify(byIdOf("toast").textContent));
+btnSimple.click();
+await settle();
+check("simple mode can be switched back to the full editor",
+  btnSimple.getAttribute("aria-pressed") === "false"
+  && byIdOf("field-id").hidden === false
+  && byIdOf("field-continue").hidden === false
+  && byIdOf("mode-switch").hidden === false
+  && byIdOf("kind-chips").hidden === false,
+  "pressed=" + btnSimple.getAttribute("aria-pressed")
+  + " id=" + byIdOf("field-id").hidden);
+
+// The AI helper answers questions about the selected macro. It posts a
+// question with the macro id, then polls the ticket until the reply is ready.
+byIdOf("btn-ai-help").click();
+check("the AI helper opens with the current macro in context",
+  byIdOf("ai-help-overlay").hidden === false
+  && byIdOf("ai-help-context").textContent.includes("定时提醒"),
+  JSON.stringify(byIdOf("ai-help-context").textContent));
+
+let aiPosted = null;
+const aiFetch = (url, init) => {
+  const target = String(url);
+  if (target.includes("/api/ai/ask") && init && init.method === "POST") {
+    aiPosted = JSON.parse(init.body);
+    return Promise.resolve({
+      ok: true,
+      status: 202,
+      text: () => Promise.resolve(JSON.stringify({ id: "t1", status: "pending" }))
+    });
+  }
+  if (target.includes("/api/ai/ask/t1")) {
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(JSON.stringify({
+        status: "done",
+        text: "AI 回答：这个宏每 30 分钟提醒一次。"
+      }))
+    });
+  }
+  return fetchStub(url, init);
+};
+currentFetch = aiFetch;
+const quickPrompt = byIdOf("ai-help-chips").querySelectorAll("button[data-prompt]")[0];
+quickPrompt.dispatch("click", { target: quickPrompt });
+check("clicking ask shows an immediate pending status",
+  byIdOf("ai-help-status").textContent.includes("已发送")
+  && byIdOf("ai-help-go").textContent === "询问中…"
+  && byIdOf("ai-help-go").disabled === true,
+  "status=" + JSON.stringify(byIdOf("ai-help-status").textContent)
+  + " label=" + JSON.stringify(byIdOf("ai-help-go").textContent)
+  + " disabled=" + byIdOf("ai-help-go").disabled);
+await new Promise((resolve) => setTimeout(resolve, 1100));
+check("a quick prompt asks with the current macro attached",
+  aiPosted !== null && aiPosted.id === "macro-1" && aiPosted.request.includes("解释这个宏"),
+  JSON.stringify(aiPosted));
+check("the AI answer replaces the thinking placeholder",
+  byIdOf("ai-help-answer").textContent.includes("每 30 分钟"),
+  JSON.stringify(byIdOf("ai-help-answer").textContent));
+check("the ask button is usable again after the reply",
+  byIdOf("ai-help-go").disabled === false
+  && byIdOf("ai-help-go").textContent === "询问"
+  && byIdOf("ai-help-status").textContent === "回答完成",
+  "disabled=" + byIdOf("ai-help-go").disabled
+  + " label=" + JSON.stringify(byIdOf("ai-help-go").textContent)
+  + " status=" + JSON.stringify(byIdOf("ai-help-status").textContent));
+
 console.log(failures === 0
   ? "editor script smoke: all assertions passed"
   : "editor script smoke: " + failures + " assertion(s) failed");

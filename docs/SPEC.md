@@ -64,6 +64,61 @@ and no wizard. Four pieces carry it:
   `localStorage` key and re-renders the quick start, so the four steps can be
   looked at again after being dismissed.
 
+### Editor usability pass
+
+Five affordances shorten the path from "I have an idea" to "it works":
+
+- **Trigger-type chips.** A row of chips above the macro list filters it by
+  trigger kind (全部/热键/键入/定时/应用/窗口/手动). The kind filter is
+  independent of the text search and both apply together; the chips are
+  rendered from one ordered table, which is also what arrow-key navigation
+  walks, so the list and the keyboard cannot disagree.
+- **Trigger cards.** The trigger type is picked from a grid of icon cards
+  (manual plus every catalog trigger), not a dropdown. A hidden
+  `#f-trigger-type` input carries the selected type so the form collector and
+  the change handler keep one source of truth, and the note below the picker
+  appends one sentence on how to test that kind of trigger.
+- **Template menu.** The sidebar's `从模板新建…` menu starts four complete
+  macros (定时提醒, 键入展开, 应用启动提醒, 一键打开网址). A template is a
+  valid document: it can be saved and run without edits, and the menu returns
+  to its placeholder after use.
+- **Save feedback.** A save disables the button while the write is in flight,
+  stamps `存储于 HH:MM:SS` in the status bar on success, and — the first time a
+  macro with a trigger is saved in a session — extends the toast with the
+  trigger's test hint. Later saves of the same macro keep the plain message.
+- **Arrow-key navigation.** The macro list is focusable; ArrowUp/ArrowDown
+  move the selection through the visible (filtered, sorted) order.
+- **Simple mode.** The toolbar's `简单模式` toggle narrows the form to what a
+  macro needs: name, enable, trigger and actions. It hides the ID field, the
+  continue-on-error policy, the form/JSON switch and the trigger-type chips.
+  Enabling it from JSON mode returns to the form first. The choice is stored in
+  `localStorage` under `macroforge.simple`, so it survives reloads; a missing or
+  throwing `localStorage` leaves the full editor on.
+
+### AI assistant
+
+The toolbar's `AI 助手` opens a read-only question panel for the selected
+macro. It is the explain/debug lane, separate from the macro author, and it
+never writes a file:
+
+- **Ask.** Quick prompts (解释这个宏, 为什么没触发, 帮我改进) or a free-form
+  question. The request carries the selected macro's id, not a client-side
+  copy, so the answer describes the file that is actually on disk.
+- **Prompt.** The server serializes the catalog's actions and triggers into
+  the prompt and appends the macro JSON, so advice cannot reference actions
+  that do not exist.
+- **Async tickets.** `POST /api/ai/ask` returns 202 with a ticket id;
+  `GET /api/ai/ask/<ticket>` reports `pending` / `done` / `error`. The editor
+  polls every 800 ms. The router keeps the 20 most recent replies and drops the
+  oldest, so polling storage cannot grow without bound.
+- **Failures.** An HTTP 429 from the gateway is shown as a quota/rate-limit
+  message instead of a raw JSON blob.
+- **Immediate feedback.** Sending shows a status line (`已发送，等待 AI 回复…`),
+  changes the button to `询问中…`, and counts elapsed seconds in the answer
+  area. The reply area sits above the controls and the modal scrolls, so a slow
+  model cannot look like a dead button. The editor page is served with
+  `Cache-Control: no-store`, so a browser cannot pin an older build.
+
 Trigger and action definitions carry the vocabulary twice. `label` and
 `description` are the stable English text used by the docs, the console and the
 tests; `zh` and `zh_desc` are what the editor displays. A definition without the
